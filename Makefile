@@ -11,6 +11,8 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
+RUNIT_SRC = src/runit src/runit-init src/sv src/chpst src/runsv src/runsvdir src/svlogd
+
 .PHONY: all clean build sysroot sources 
 
 clean:
@@ -24,6 +26,11 @@ build/stamps/:
 
 build/sources/:
 	mkdir -p build/sources
+
+build/sysroot/:
+	mkdir -p $(SYSROOT)
+	mkdir -p $(SYSROOT)/etc/runit
+	mkdir -p $(SYSROOT)/etc/sv
 
 #! Downloads
 build/sources/musl-$(MUSL_V).tar.gz: | build/sources/
@@ -72,10 +79,14 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	echo "$(MUSL_CC)" > src/conf-ld && \
 	make && \
 	mkdir -p $(SYSROOT)/sbin/ && \
-	install -m 755 src/runit src/runit-init src/sv src/chpst src/runsv src/runsvdir src/svlogd $(SYSROOT)/sbin/
+	install -m 755 $(RUNIT_SRC) $(SYSROOT)/sbin/
 
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp
-	# install config, runit stages, services
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp | build/sysroot/
+	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
+	cp -a services/* $(SYSROOT)/etc/sv
+	chmod +x $(SYSROOT)/etc/runit/*
+	chmod +x $(SYSROOT)/etc/sv/*/run
+
 	touch $@
