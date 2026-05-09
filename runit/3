@@ -1,0 +1,23 @@
+#!/bin/sh
+
+echo "[stage 3] shutting down..."
+
+echo "[stage 3] killing all processes..."
+kill -TERM -1
+sleep 1
+kill -KILL -1
+
+echo "[stage 3] unmounting filesystems..."
+umount /run
+umount /dev/pts
+umount /dev
+umount /sys
+umount /proc
+
+echo "[stage 3] running sync..."
+sync
+
+echo "[stage 3] mounting root (read-only)..."
+mount -o remount,ro /
+
+echo "[stage 3] done"
