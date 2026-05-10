@@ -3,6 +3,7 @@ SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
+SHINIGAMI = ../shinigami # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -13,12 +14,14 @@ DOWNLOADS = \
 
 RUNIT_SRC = src/runit src/runit-init src/sv src/chpst src/runsv src/runsvdir src/svlogd
 
-.PHONY: all clean build sysroot sources 
+SYSROOT_BASE = proc sys dev dev/pts etc bin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run
+
+.PHONY: all clean build sysroot sources initramfs qemu
+
+all: build/stamps/sysroot.stamp
 
 clean:
 	rm -rf build
-
-all: build/stamps/sysroot.stamp
 
 #! Directories
 build/stamps/:
@@ -84,9 +87,25 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	touch $@
 
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp | build/sysroot/
+	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
+	chmod 700 $(SYSROOT)/root
+	chmod 1777 $(SYSROOT)/tmp
+	chmod 755 $(SYSROOT)/run
+	
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 
 	touch $@
+
+initramfs: build/stamps/sysroot.stamp
+	cd $(SYSROOT) && find . | cpio -oH newc | gzip > ../../initramfs.cpio.gz
+
+qemu: build/initramfs.cpio.gz
+	qemu-system-x86_64 \
+		-kernel $(SHINIGAMI)/arch/x86/boot/bzImage \
+		-initrd build/initramfs.cpio.gz \
+		-append "console=ttyS0 rdinit=/sbin/runit-init" \
+		-nographic \
+		-m 512M
