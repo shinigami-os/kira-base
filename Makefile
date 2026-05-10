@@ -3,7 +3,7 @@ SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
-SHINIGAMI = ../shinigami # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
+SHINIGAMI = $(CURDIR)/../shinigami # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -12,9 +12,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-RUNIT_SRC = src/runit src/runit-init src/sv src/chpst src/runsv src/runsvdir src/svlogd
-
-SYSROOT_BASE = proc sys dev dev/pts etc bin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run
 
 .PHONY: all clean build sysroot sources initramfs qemu
 
@@ -68,22 +66,28 @@ build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 
 	touch $@
 
-build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ | build/stamps/
+build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/kernel-headers.stamp | build/stamps/
+	cp $(CURDIR)/config/busybox.config $(<D)/.config
 	cd $(<D) && \
-	make defconfig CC=$(MUSL_CC) && \
 	make CC=$(MUSL_CC) && \
 	make install CC=$(MUSL_CC) CONFIG_PREFIX=$(SYSROOT)
-
+	
 	touch $@
 
 build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
-	cd $(<D) && \
-	echo "$(MUSL_CC)" > src/conf-cc && \
-	echo "$(MUSL_CC)" > src/conf-ld && \
-	make && \
-	mkdir -p $(SYSROOT)/sbin/ && \
-	install -m 755 $(RUNIT_SRC) $(SYSROOT)/sbin/
-
+	echo "$(MUSL_CC)" > $(<D)/src/conf-cc
+	echo "$(MUSL_CC)" > $(<D)/src/conf-ld
+	cd $(<D)/src && make
+	install -m 755 \
+		$(<D)/src/runit \
+		$(<D)/src/runit-init \
+		$(<D)/src/sv \
+		$(<D)/src/chpst \
+		$(<D)/src/runsv \
+		$(<D)/src/runsvdir \
+		$(<D)/src/svlogd \
+		$(SYSROOT)/sbin/
+	
 	touch $@
 
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp | build/sysroot/
@@ -99,6 +103,11 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 
 	touch $@
 
+build/stamps/kernel-headers.stamp: | build/stamps/
+	make -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)
+	touch $@
+
+#! Targets
 initramfs: build/stamps/sysroot.stamp
 	cd $(SYSROOT) && find . | cpio -oH newc | gzip > ../../initramfs.cpio.gz
 
