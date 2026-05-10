@@ -1,4 +1,4 @@
-SYSROOT = build/sysroot
+SYSROOT = $(CURDIR)/build/sysroot
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
