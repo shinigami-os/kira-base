@@ -1,4 +1,4 @@
 #!/bin/sh
 
-echo "[stage 2] starting runit..."
+echo "[stage 2] starting service supervision..."
 exec runsvdir /etc/sv

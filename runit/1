@@ -10,7 +10,7 @@ mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /run
 
 echo "[stage 1] setting hostname..."
-echo "kira" > /proc/sys/kernel/hostname
+hostname -F /etc/hostname
 
 echo "[stage 1] bringing up loopback..."
 ip link set lo up
