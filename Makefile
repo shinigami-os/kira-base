@@ -3,7 +3,8 @@ SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
-SHINIGAMI = $(CURDIR)/../shinigami # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
+# you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
+SHINIGAMI = $(CURDIR)/../shinigami
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -108,8 +109,8 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	touch $@
 
 #! Targets
-initramfs: build/stamps/sysroot.stamp
-	cd $(SYSROOT) && find . | cpio -oH newc | gzip > ../../initramfs.cpio.gz
+build/initramfs.cpio.gz: build/stamps/sysroot.stamp
+	cd $(SYSROOT) && find . | cpio -oH newc | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz
 	qemu-system-x86_64 \
