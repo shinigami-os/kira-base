@@ -110,7 +110,7 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 
 #! Targets
 build/initramfs.cpio.gz: build/stamps/sysroot.stamp
-	cd $(SYSROOT) && find . | cpio -oH newc | gzip > $(CURDIR)/build/initramfs.cpio.gz
+	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz
 	qemu-system-x86_64 \
