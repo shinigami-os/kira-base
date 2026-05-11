@@ -4,6 +4,7 @@ MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
 EUDEV_V = 3.2.14
+DHCPCD_V = 10.3.2
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
@@ -14,7 +15,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin
 
 .PHONY: all clean build sysroot sources initramfs qemu
 
@@ -48,6 +49,9 @@ build/sources/busybox-$(BUSYBOX_V).tar.bz2: | build/sources/
 build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
 	wget -O $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
 
+build/sources/dhcpcd-$(DHCPCD_V).tar.xz: | build/sources/
+	wget -O $@ https://github.com/NetworkConfiguration/dhcpcd/releases/download/v$(DHCPCD_V)/dhcpcd-$(DHCPCD_V).tar.xz
+
 
 #! Extracts
 build/sources/musl-$(MUSL_V)/: build/sources/musl-$(MUSL_V).tar.gz
@@ -63,6 +67,9 @@ build/sources/runit-$(RUNIT_V)/: build/sources/runit-$(RUNIT_V).tar.gz
 
 build/sources/eudev-$(EUDEV_V)/: build/sources/eudev-$(EUDEV_V).tar.gz
 	tar xzf $< -C build/sources
+
+build/sources/dhcpcd-$(DHCPCD_V)/: build/sources/dhcpcd-$(DHCPCD_V).tar.xz
+	tar xJf $< -C build/sources
 
 
 #! Compile
@@ -104,17 +111,19 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 	cd $(<D) && \
 	./configure \
 		--host=x86_64-linux-musl \
-		--prefix=$(SYSROOT) \
-		--sysconfdir=$(SYSROOT)/etc \
+		--prefix=/usr \
+		--sysconfdir=/etc \
 		--with-rootrundir=/run/udev \
 		--disable-manpages \
 		--disable-hwdb \
 		--disable-blkid \
 		--disable-selinux \
 		--disable-kmod \
-		CC=$(MUSL_CC) && \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/include" \
+		LDFLAGS="-L$(SYSROOT)/lib" && \
 	make && \
-	make install
+	make install DESTDIR=$(SYSROOT)
 	find $(SYSROOT) -type l | while read link; do \
 		target=$$(readlink "$$link"); \
 		case "$$target" in \
@@ -127,7 +136,25 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--dbdir=/var/lib/dhcpcd \
+		--libexecdir=/usr/lib/dhcpcd \
+		--runstatedir=/run \
+		--without-dev \
+		--host=x86_64-linux-musl \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
