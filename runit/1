@@ -13,6 +13,12 @@ mkdir -p /run/udev
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
 
+for type in rsa ecdsa ed25519; do
+    if [ ! -f /etc/ssh/ssh_host_${type}_key ]; then
+        ssh-keygen -t $type -f /etc/ssh/ssh_host_${type}_key -N ""
+    fi
+done
+
 export SVDIR=/etc/sv
 
 echo "[stage 1] bringing up loopback..."

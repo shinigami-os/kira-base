@@ -5,6 +5,9 @@ BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
 EUDEV_V = 3.2.14
 DHCPCD_V = 10.3.2
+ZLIB_V = 1.3.2
+LIBRESSL_V = 4.3.1
+OPENSSH_V = 10.3p1
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
@@ -15,7 +18,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh
 
 .PHONY: all clean build sysroot sources initramfs qemu
 
@@ -52,6 +55,15 @@ build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
 build/sources/dhcpcd-$(DHCPCD_V).tar.xz: | build/sources/
 	wget -O $@ https://github.com/NetworkConfiguration/dhcpcd/releases/download/v$(DHCPCD_V)/dhcpcd-$(DHCPCD_V).tar.xz
 
+build/sources/zlib-$(ZLIB_V).tar.gz: | build/sources/
+	wget -O $@ https://github.com/madler/zlib/releases/download/v$(ZLIB_V)/zlib-$(ZLIB_V).tar.gz
+
+build/sources/libressl-$(LIBRESSL_V).tar.gz: | build/sources/
+	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$(LIBRESSL_V).tar.gz
+
+build/sources/openssh-$(OPENSSH_V).tar.gz: | build/sources/
+	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-$(OPENSSH_V).tar.gz
+
 
 #! Extracts
 build/sources/musl-$(MUSL_V)/: build/sources/musl-$(MUSL_V).tar.gz
@@ -70,6 +82,15 @@ build/sources/eudev-$(EUDEV_V)/: build/sources/eudev-$(EUDEV_V).tar.gz
 
 build/sources/dhcpcd-$(DHCPCD_V)/: build/sources/dhcpcd-$(DHCPCD_V).tar.xz
 	tar xJf $< -C build/sources
+
+build/sources/zlib-$(ZLIB_V)/: build/sources/zlib-$(ZLIB_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/libressl-$(LIBRESSL_V)/: build/sources/libressl-$(LIBRESSL_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/openssh-$(OPENSSH_V)/: build/sources/openssh-$(OPENSSH_V).tar.gz
+	tar xzf $< -C build/sources
 
 
 #! Compile
@@ -154,11 +175,50 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ | build/stamps/
+	cd $(<D) && \
+	CC=$(MUSL_CC) ./configure --prefix=/usr && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+
+	touch $@
+
+build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--host=x86_64-linux-musl \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+
+	touch $@
+
+build/stamps/openssh.stamp: build/sources/openssh-$(OPENSSH_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--host=x86_64-linux-musl \
+		--prefix=/usr \
+		--sysconfdir=/etc/ssh \
+		--with-privsep-path=/var/empty \
+		--with-ssl-dir=$(SYSROOT)/usr \
+		--with-zlib=$(SYSROOT)/usr \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
 	chmod 755 $(SYSROOT)/run
+	chmod 755 $(SYSROOT)/var/empty
 	
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
