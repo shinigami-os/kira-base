@@ -18,7 +18,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh 
 
 .PHONY: all clean build sysroot sources initramfs qemu
 
@@ -227,6 +227,8 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
+	touch $(SYSROOT)/var/log/lastlog
+	touch $(SYSROOT)/var/log/wtmp
 
 	touch $@
 
