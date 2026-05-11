@@ -1,4 +1,4 @@
 #!/bin/sh
 
-/sbin/udevadm trigger
-/sbin/udevadm settle
+/usr/sbin/udevadm trigger
+/usr/sbin/udevadm settle
