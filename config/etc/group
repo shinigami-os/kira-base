@@ -12,4 +12,4 @@ dhcpcd:x:999:
 cdrom:x:11:
 tape:x:26:
 kvm:x:36:
-sgx:x:10:
+sgx:x:39:
