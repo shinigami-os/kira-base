@@ -115,6 +115,15 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		CC=$(MUSL_CC) && \
 	make && \
 	make install
+	find $(SYSROOT) -type l | while read link; do \
+		target=$$(readlink "$$link"); \
+		case "$$target" in \
+			$(SYSROOT)/*) \
+				newtarget=$${target#$(SYSROOT)}; \
+				ln -sf "$$newtarget" "$$link"; \
+				;; \
+		esac; \
+	done
 
 	touch $@
 
