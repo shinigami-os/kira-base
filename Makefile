@@ -3,6 +3,7 @@ SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
 RUNIT_V = 2.3.1
+EUDEV_V = 3.2.14
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
@@ -13,7 +14,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev
 
 .PHONY: all clean build sysroot sources initramfs qemu
 
@@ -44,6 +45,9 @@ build/sources/runit-$(RUNIT_V).tar.gz: | build/sources/
 build/sources/busybox-$(BUSYBOX_V).tar.bz2: | build/sources/
 	wget -O $@ https://busybox.net/downloads/busybox-$(BUSYBOX_V).tar.bz2
 
+build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
+	wget -O $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
+
 
 #! Extracts
 build/sources/musl-$(MUSL_V)/: build/sources/musl-$(MUSL_V).tar.gz
@@ -57,6 +61,9 @@ build/sources/runit-$(RUNIT_V)/: build/sources/runit-$(RUNIT_V).tar.gz
 	mv build/sources/admin/runit-$(RUNIT_V) build/sources/runit-$(RUNIT_V)
 	rm -rf build/sources/admin
 
+build/sources/eudev-$(EUDEV_V)/: build/sources/eudev-$(EUDEV_V).tar.gz
+	tar xzf $< -C build/sources
+
 
 #! Compile
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
@@ -64,6 +71,8 @@ build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 	./configure --prefix=$(SYSROOT) --syslibdir=$(SYSROOT)/lib && \
 	make && \
 	make install
+	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/lib/musl-gcc.specs
+	ln -sf libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
 
 	touch $@
 
@@ -91,7 +100,25 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--host=x86_64-linux-musl \
+		--prefix=$(SYSROOT) \
+		--sysconfdir=$(SYSROOT)/etc \
+		--with-rootrundir=/run/udev \
+		--disable-manpages \
+		--disable-hwdb \
+		--disable-blkid \
+		--disable-selinux \
+		--disable-kmod \
+		CC=$(MUSL_CC) && \
+	make && \
+	make install
+
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -103,6 +130,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
+	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 
 	touch $@
 
