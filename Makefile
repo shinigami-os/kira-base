@@ -8,6 +8,8 @@ DHCPCD_V = 10.3.2
 ZLIB_V = 1.3.2
 LIBRESSL_V = 4.3.1
 OPENSSH_V = 10.3p1
+NCURSES_V = 6.6
+ZSH_V = 5.9
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
@@ -18,14 +20,17 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh 
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel
 
-.PHONY: all clean build sysroot sources initramfs qemu
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
 all: build/stamps/sysroot.stamp
 
 clean:
 	rm -rf build
+
+soft-clean:
+	rm -rf build/stamps build/initramfs.cpio.gz
 
 #! Directories
 build/stamps/:
@@ -64,6 +69,12 @@ build/sources/libressl-$(LIBRESSL_V).tar.gz: | build/sources/
 build/sources/openssh-$(OPENSSH_V).tar.gz: | build/sources/
 	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-$(OPENSSH_V).tar.gz
 
+build/sources/ncurses-$(NCURSES_V).tar.gz: | build/sources/
+	wget -O $@ https://ftp.gnu.org/gnu/ncurses/ncurses-$(NCURSES_V).tar.gz
+
+build/sources/zsh-$(ZSH_V).tar.xz: | build/sources/
+	wget -O $@ https://sourceforge.net/projects/zsh/files/zsh/$(ZSH_V)/zsh-$(ZSH_V).tar.xz
+
 
 #! Extracts
 build/sources/musl-$(MUSL_V)/: build/sources/musl-$(MUSL_V).tar.gz
@@ -92,6 +103,11 @@ build/sources/libressl-$(LIBRESSL_V)/: build/sources/libressl-$(LIBRESSL_V).tar.
 build/sources/openssh-$(OPENSSH_V)/: build/sources/openssh-$(OPENSSH_V).tar.gz
 	tar xzf $< -C build/sources
 
+build/sources/ncurses-$(NCURSES_V)/: build/sources/ncurses-$(NCURSES_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/zsh-$(ZSH_V)/: build/sources/zsh-$(ZSH_V).tar.xz
+	tar xJf $< -C build/sources
 
 #! Compile
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
@@ -213,7 +229,77 @@ build/stamps/openssh.stamp: build/sources/openssh-$(OPENSSH_V)/ build/stamps/mus
 
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/ncurses.stamp: build/sources/ncurses-$(NCURSES_V)/ build/stamps/musl.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--host=x86_64-linux-musl \
+		--with-shared \
+		--enable-widec \
+		--without-tests \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libncurses.so
+	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libtinfo.so
+	printf '#pragma once\n#include <ncurses.h>\n' > $(SYSROOT)/usr/include/termcap.h
+	
+	touch $@
+
+build/stamps/zsh.stamp: build/sources/zsh-$(ZSH_V)/ build/stamps/musl.stamp build/stamps/ncurses.stamp | build/stamps/
+	sed -i 's/^static char \*boolcodes\[\]/const char *const boolcodes[]/' $(<D)/Src/Modules/termcap.c
+	sed -i 's/^static const char \*const boolcodes\[\]/const char *const boolcodes[]/' $(<D)/Src/Modules/termcap.c
+	sed -i '/#include.*zsh\.mdh/a #include <termcap.h>' $(<D)/Src/prompt.c
+	rm -f $(<D)/config.cache
+	cp /usr/share/misc/config.sub $(<D)/config.sub
+	cp /usr/share/misc/config.guess $(<D)/config.guess
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--host=x86_64-linux-musl \
+		--sysconfdir=/etc/zsh \
+		--with-term-lib=ncursesw \
+		--disable-gdbm \
+		--disable-pcre \
+		--enable-dynamic \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include -DNCURSES_WIDECHAR=1" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" \
+		LIBS="-lncursesw -ldl"
+	sed -i 's|/\* #undef HAVE_TERM_H \*/|#define HAVE_TERM_H 1|' $(<D)/config.h
+	sed -i 's|/\* #undef ZSH_HAVE_TERM_H \*/|#define ZSH_HAVE_TERM_H 1|' $(<D)/config.h
+	sed -i 's|/\* #undef HAVE_TERMCAP_H \*/|#define HAVE_TERMCAP_H 1|' $(<D)/config.h
+	sed -i 's|/\* #undef HAVE_TGOTO \*/|#define HAVE_TGOTO 1|' $(<D)/config.h
+	sed -i 's|/\* #undef DYNAMIC \*/|#define DYNAMIC 1|' $(<D)/config.h
+	sed -i 's|/\* The extension used for dynamically loaded modules\. \*/|/* The extension used for dynamically loaded modules. */\n#define MODULE_EXT ".so"|' $(<D)/config.h
+	sed -i '/name=zsh\/main\|name=zsh\/db\/gdbm/!s/link=static/link=dynamic/g' $(<D)/config.modules
+	sed -i '/name=zsh\/db\/gdbm/!s/link=no auto=yes load=no/link=dynamic auto=yes load=yes/g' $(<D)/config.modules
+	cd $(<D) && make && make install DESTDIR=$(SYSROOT)
+	
+	touch $@
+
+build/stamps/zsh-plugins.stamp: | build/stamps/ build/sources/
+	mkdir -p $(SYSROOT)/usr/share/zsh/plugins
+	wget -O build/sources/zsh-autosuggestions.tar.gz https://github.com/zsh-users/zsh-autosuggestions/archive/refs/tags/v0.7.1.tar.gz
+	tar xzf build/sources/zsh-autosuggestions.tar.gz -C build/sources
+	mv build/sources/zsh-autosuggestions-0.7.1 $(SYSROOT)/usr/share/zsh/plugins/zsh-autosuggestions
+
+	wget -O build/sources/zsh-syntax-highlighting.tar.gz https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/tags/0.8.0.tar.gz
+	tar xzf build/sources/zsh-syntax-highlighting.tar.gz -C build/sources
+	mv build/sources/zsh-syntax-highlighting-0.8.0 $(SYSROOT)/usr/share/zsh/plugins/zsh-syntax-highlighting
+
+	wget -O build/sources/powerlevel10k.tar.gz https://github.com/romkatv/powerlevel10k/archive/refs/tags/v1.20.0.tar.gz
+	tar xzf build/sources/powerlevel10k.tar.gz -C build/sources
+	mv build/sources/powerlevel10k-1.20.0 $(SYSROOT)/usr/share/zsh/plugins/powerlevel10k
+
+	mkdir -p $(SYSROOT)/usr/share/zsh/plugins/git
+	wget -O $(SYSROOT)/usr/share/zsh/plugins/git/git.plugin.zsh https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/plugins/git/git.plugin.zsh
+
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -223,6 +309,10 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
 	cp -r config/etc/* $(SYSROOT)/etc/
+	install -m 644 config/zsh/zshrc $(SYSROOT)/root/.zshrc
+	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
+	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
+	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/etc/skel/.p10k.zsh
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
