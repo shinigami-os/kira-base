@@ -12,6 +12,7 @@ NCURSES_V = 6.6
 ZSH_V = 5.9
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
+FLUX = $(CURDIR)/../flux
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -20,7 +21,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux
 
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
@@ -299,7 +300,11 @@ build/stamps/zsh-plugins.stamp: | build/stamps/ build/sources/
 
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/flux.stamp: build/stamps/musl.stamp | build/stamps/
+	install -Dm755 $(FLUX)/build/flux $(SYSROOT)/usr/bin/flux
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
