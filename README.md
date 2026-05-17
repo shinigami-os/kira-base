@@ -15,16 +15,20 @@ Build scripts, runit init stages, service definitions, and core system configura
 | TLS | LibreSSL | 4.3.1 |
 | Remote access | OpenSSH | 10.3p1 |
 | Shell | ZSH | 5.9 |
+| Package manager | flux | — |
 
 ## Build
 
 Requires: `gcc`, `make`, `wget`, `git`, `cpio`, `gzip`, `gperf`, `pkg-config`, `libmount-dev`
 
-Clone the Shinigami kernel alongside this repo first:
+Clone the Shinigami kernel and flux alongside this repo first:
 
 ```sh
 git clone https://github.com/shinigami-os/shinigami ../shinigami
+git clone https://github.com/shinigami-os/flux ../flux
 ```
+
+Copy the Kira project minisign public key into `config/etc/flux/flux.pub` before building.
 
 Then build:
 
@@ -55,7 +59,9 @@ kira-base/
   services/         runit service directories (/etc/sv/)
   config/
     etc/            static config files installed to /etc/
-    zsh/            ZSH default config (zshrc, p10k.zsh)
+      flux/         flux default config
+      zsh/            ZSH default config (zshrc, p10k.zsh)
+      ssh/            sshd config
     busybox.config  BusyBox build config
   build/            GITIGNORED: sources, stamps, sysroot, initramfs
 ```
