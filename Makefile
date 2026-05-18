@@ -10,9 +10,12 @@ LIBRESSL_V = 4.3.1
 OPENSSH_V = 10.3p1
 NCURSES_V = 6.6
 ZSH_V = 5.9
+CURL_V = 8.20.0
+ZSTD_V = 1.5.7
+MINISIGN_V = 0.12
+LIBSODIUM_V = 1.0.20
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
-FLUX = $(CURDIR)/../flux
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -21,7 +24,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs
 
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
@@ -76,6 +79,22 @@ build/sources/ncurses-$(NCURSES_V).tar.gz: | build/sources/
 build/sources/zsh-$(ZSH_V).tar.xz: | build/sources/
 	wget -O $@ https://sourceforge.net/projects/zsh/files/zsh/$(ZSH_V)/zsh-$(ZSH_V).tar.xz
 
+build/sources/flux/: | build/sources/
+	git clone --depth=1 https://github.com/shinigami-os/flux $@
+
+build/sources/curl-$(CURL_V).tar.gz: | build/sources/
+	wget -O $@ https://curl.se/download/curl-$(CURL_V).tar.gz
+
+build/sources/zstd-$(ZSTD_V).tar.gz: | build/sources/
+	wget -O $@ https://github.com/facebook/zstd/releases/download/v$(ZSTD_V)/zstd-$(ZSTD_V).tar.gz
+
+build/sources/libsodium-$(LIBSODIUM_V).tar.gz: | build/sources/
+	wget -O $@ https://download.libsodium.org/libsodium/releases/libsodium-$(LIBSODIUM_V).tar.gz
+
+build/sources/minisign-$(MINISIGN_V).tar.gz: | build/sources/
+	wget -O $@ https://github.com/jedisct1/minisign/archive/refs/tags/$(MINISIGN_V).tar.gz
+
+
 
 #! Extracts
 build/sources/musl-$(MUSL_V)/: build/sources/musl-$(MUSL_V).tar.gz
@@ -109,6 +128,19 @@ build/sources/ncurses-$(NCURSES_V)/: build/sources/ncurses-$(NCURSES_V).tar.gz
 
 build/sources/zsh-$(ZSH_V)/: build/sources/zsh-$(ZSH_V).tar.xz
 	tar xJf $< -C build/sources
+
+build/sources/curl-$(CURL_V)/: build/sources/curl-$(CURL_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/zstd-$(ZSTD_V)/: build/sources/zstd-$(ZSTD_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/libsodium-$(LIBSODIUM_V)/: build/sources/libsodium-$(LIBSODIUM_V).tar.gz
+	tar xzf $< -C build/sources
+
+build/sources/minisign-$(MINISIGN_V)/: build/sources/minisign-$(MINISIGN_V).tar.gz
+	tar xzf $< -C build/sources
+
 
 #! Compile
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
@@ -210,7 +242,10 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
 	make && \
 	make install DESTDIR=$(SYSROOT)
-
+	rm -f $(SYSROOT)/usr/lib/libssl.la \
+		$(SYSROOT)/usr/lib/libcrypto.la \
+		$(SYSROOT)/usr/lib/libtls.la
+	
 	touch $@
 
 build/stamps/openssh.stamp: build/sources/openssh-$(OPENSSH_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp | build/stamps/
@@ -300,11 +335,69 @@ build/stamps/zsh-plugins.stamp: | build/stamps/ build/sources/
 
 	touch $@
 
-build/stamps/flux.stamp: build/stamps/musl.stamp | build/stamps/
-	install -Dm755 $(FLUX)/build/flux $(SYSROOT)/usr/bin/flux
+build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--host=x86_64-linux-musl \
+		--with-openssl=$(SYSROOT)/usr \
+		--with-zlib=$(SYSROOT)/usr \
+		--with-ca-bundle=/etc/ssl/certs/ca-certificates.crt \
+		--without-libpsl \
+		--without-brotli \
+		--without-nghttp2 \
+		--disable-ldap \
+		--disable-shared \
+		--enable-static \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+	
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
+build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stamps/musl.stamp | build/stamps/
+	cd $(<D) && \
+	./configure \
+		--prefix=/usr \
+		--host=x86_64-linux-musl \
+		--disable-shared \
+		--enable-static \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
+	make && \
+	make install DESTDIR=$(SYSROOT)
+	
+	touch $@
+
+build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/musl.stamp | build/stamps/
+	mkdir -p $(<D)/build
+	cd $(<D)/build && cmake \
+		-DCMAKE_C_COMPILER=$(MUSL_CC) \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DSODIUM_INCLUDE_DIR=$(SYSROOT)/usr/include \
+		-DSODIUM_LIBRARY=$(SYSROOT)/usr/lib/libsodium.a \
+		.. && \
+	make && make install DESTDIR=$(SYSROOT)
+	
+	touch $@
+
+build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/musl.stamp | build/stamps/
+	cd $(<D) && \
+	make CC=$(MUSL_CC) PREFIX=/usr && \
+	make install PREFIX=/usr DESTDIR=$(SYSROOT)
+	
+	touch $@
+
+build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/stamps/
+	make CC=$(MUSL_CC) -C $(<D)
+	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
+	touch $@
+
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh runit/1 runit/2 runit/3 $(wildcard services/*/run) $(wildcard config/etc/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -314,12 +407,16 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
 	cp -r config/etc/* $(SYSROOT)/etc/
+	mkdir -p $(SYSROOT)/etc/ssl/certs
+	cp /etc/ssl/certs/ca-certificates.crt $(SYSROOT)/etc/ssl/certs/
 	install -m 644 config/zsh/zshrc $(SYSROOT)/root/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
 	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/etc/skel/.p10k.zsh
+	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
+	chmod +x $(SYSROOT)/usr/bin/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 	touch $(SYSROOT)/var/log/lastlog

@@ -24,4 +24,7 @@ export SVDIR=/etc/sv
 echo "[stage 1] bringing up loopback..."
 ip link set lo up
 
+# Register sysroot packages in flux database on first boot
+/usr/bin/flux-bootstrap.sh
+
 echo "[stage 1] done"
