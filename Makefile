@@ -438,6 +438,6 @@ qemu: build/initramfs.cpio.gz
 		-initrd build/initramfs.cpio.gz \
 		-append "console=ttyS0 rdinit=/sbin/runit-init" \
 		-nographic \
-		-m 512M \
+		-m 8G \
 		-netdev user,id=net0,hostfwd=tcp::2222-:22 \
 		-device e1000,netdev=net0
