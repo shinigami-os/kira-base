@@ -26,7 +26,7 @@ DOWNLOADS = \
 
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs
 
-.PHONY: all clean build sysroot sources initramfs qemu soft-clean
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages
 
 all: build/stamps/sysroot.stamp
 
@@ -34,7 +34,7 @@ clean:
 	rm -rf build
 
 soft-clean:
-	rm -rf build/stamps build/initramfs.cpio.gz
+	rm -rf build/initramfs.cpio.gz
 
 #! Directories
 build/stamps/:
@@ -424,12 +424,36 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 
 	touch $@
 
+build/stamps/packages.stamp: build/stamps/sysroot.stamp
+	@echo "Note: packages target requires root (sudo make packages)"
+	sudo mount --bind /proc $(SYSROOT)/proc
+	sudo mount --bind /sys $(SYSROOT)/sys
+	sudo mount --bind /dev $(SYSROOT)/dev
+	sudo mount --bind /dev/pts $(SYSROOT)/dev/pts
+	sudo cp /etc/resolv.conf $(SYSROOT)/etc/resolv.conf
+	sudo chroot $(SYSROOT) /usr/bin/flux update; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install make; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install binutils; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install flex; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install bison; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install util-linux; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install parted; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install e2fsprogs; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install dosfstools; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install wpa_supplicant; true
+	sudo umount $(SYSROOT)/dev/pts; true
+	sudo umount $(SYSROOT)/dev; true
+	sudo umount $(SYSROOT)/sys; true
+	sudo umount $(SYSROOT)/proc; true
+
+	touch $@
+
 build/stamps/kernel-headers.stamp: | build/stamps/
 	make -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/sysroot.stamp
+build/initramfs.cpio.gz: build/stamps/packages.stamp
 	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz
