@@ -34,7 +34,7 @@ clean:
 	rm -rf build
 
 soft-clean:
-	rm -rf build/initramfs.cpio.gz
+	rm -rf build/stamps build/initramfs.cpio.gz
 
 #! Directories
 build/stamps/:
@@ -164,7 +164,7 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	echo "$(MUSL_CC)" > $(<D)/src/conf-cc
 	echo "$(MUSL_CC)" > $(<D)/src/conf-ld
-	cd $(<D)/src && make
+	cd $(<D)/src && make -j$(nproc)
 	install -m 755 \
 		$(<D)/src/runit \
 		$(<D)/src/runit-init \
@@ -192,7 +192,7 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/include" \
 		LDFLAGS="-L$(SYSROOT)/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	find $(SYSROOT) -type l | while read link; do \
 		target=$$(readlink "$$link"); \
@@ -219,7 +219,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -227,7 +227,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ | build/stamps/
 	cd $(<D) && \
 	CC=$(MUSL_CC) ./configure --prefix=/usr && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -240,7 +240,7 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	rm -f $(SYSROOT)/usr/lib/libssl.la \
 		$(SYSROOT)/usr/lib/libcrypto.la \
@@ -260,7 +260,7 @@ build/stamps/openssh.stamp: build/sources/openssh-$(OPENSSH_V)/ build/stamps/mus
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -276,7 +276,7 @@ build/stamps/ncurses.stamp: build/sources/ncurses-$(NCURSES_V)/ build/stamps/mus
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libncurses.so
 	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libtinfo.so
@@ -312,7 +312,7 @@ build/stamps/zsh.stamp: build/sources/zsh-$(ZSH_V)/ build/stamps/musl.stamp buil
 	sed -i 's|/\* The extension used for dynamically loaded modules\. \*/|/* The extension used for dynamically loaded modules. */\n#define MODULE_EXT ".so"|' $(<D)/config.h
 	sed -i '/name=zsh\/main\|name=zsh\/db\/gdbm/!s/link=static/link=dynamic/g' $(<D)/config.modules
 	sed -i '/name=zsh\/db\/gdbm/!s/link=no auto=yes load=no/link=dynamic auto=yes load=yes/g' $(<D)/config.modules
-	cd $(<D) && make && make install DESTDIR=$(SYSROOT)
+	cd $(<D) && make -j$(nproc) && make install DESTDIR=$(SYSROOT)
 	
 	touch $@
 
@@ -352,7 +352,7 @@ build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp b
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	
 	touch $@
@@ -367,7 +367,7 @@ build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stam
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make && \
+	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	
 	touch $@
@@ -381,19 +381,19 @@ build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/
 		-DSODIUM_INCLUDE_DIR=$(SYSROOT)/usr/include \
 		-DSODIUM_LIBRARY=$(SYSROOT)/usr/lib/libsodium.a \
 		.. && \
-	make && make install DESTDIR=$(SYSROOT)
+	make -j$(nproc) && make install DESTDIR=$(SYSROOT)
 	
 	touch $@
 
 build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/musl.stamp | build/stamps/
 	cd $(<D) && \
-	make CC=$(MUSL_CC) PREFIX=/usr && \
+	make -j$(nproc) CC=$(MUSL_CC) PREFIX=/usr && \
 	make install PREFIX=/usr DESTDIR=$(SYSROOT)
 	
 	touch $@
 
 build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/stamps/
-	make CC=$(MUSL_CC) -C $(<D)
+	make -j$(nproc) CC=$(MUSL_CC) -C $(<D)
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	touch $@
 
@@ -416,7 +416,6 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
-	chmod +x $(SYSROOT)/usr/bin/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 	touch $(SYSROOT)/var/log/lastlog
@@ -432,14 +431,12 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp
 	sudo mount --bind /dev/pts $(SYSROOT)/dev/pts
 	sudo cp /etc/resolv.conf $(SYSROOT)/etc/resolv.conf
 	sudo chroot $(SYSROOT) /usr/bin/flux update; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install make; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install binutils; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install flex; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install bison; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install util-linux; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install parted; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install e2fsprogs; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install dosfstools; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install grub; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install wpa_supplicant; true
 	sudo umount $(SYSROOT)/dev/pts; true
 	sudo umount $(SYSROOT)/dev; true
@@ -449,11 +446,11 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp
 	touch $@
 
 build/stamps/kernel-headers.stamp: | build/stamps/
-	make -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)
+	make -j$(nproc) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/packages.stamp
+build/initramfs.cpio.gz: build/stamps/sysroot.stamp
 	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz
