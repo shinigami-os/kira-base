@@ -48,7 +48,7 @@ ssh -o StrictHostKeyChecking=no root@localhost -p 2222
 To rebuild without re-downloading sources:
 
 ```sh
-make soft-clean && make
+make soft-clean && make  # may require root
 ```
 
 ## Repository Layout
