@@ -37,6 +37,10 @@ soft-clean:
 	rm -rf build/stamps build/initramfs.cpio.gz
 	sudo rm -rf $(SYSROOT)
 
+super-soft-clean:
+	rm build/stamps/sysroot.stamp build/initramfs.cpio.gz
+	sudo chown -R $(whoami):$(whoami) build/sysroot
+
 packages-clean:
 	sudo rm -rf $(SYSROOT)/var/lib/flux/installed \
 		$(SYSROOT)/var/cache/flux \
@@ -446,6 +450,7 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp
 	sudo chroot $(SYSROOT) /usr/bin/flux install grub; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install wpa_supplicant; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
 	sudo umount $(SYSROOT)/dev/pts; true
 	sudo umount $(SYSROOT)/dev; true
 	sudo umount $(SYSROOT)/sys; true
