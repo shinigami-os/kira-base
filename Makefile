@@ -421,7 +421,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/etc/skel/.p10k.zsh
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
-	install -m 755 scripts/fetch.sh $(SYSROOT)/usr/bin/fetch.sh
+	install -m 755 scripts/fetch.sh $(SYSROOT)/usr/bin/fetch
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
