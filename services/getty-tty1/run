@@ -1,2 +1,3 @@
 #!/bin/sh
-exec getty 38400 tty1
+
+exec getty -a root 38400 tty1
