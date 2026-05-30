@@ -30,4 +30,7 @@ ip link set lo up
 # Register sysroot packages in flux database on first boot
 /usr/bin/flux-bootstrap.sh
 
+# Load AZERTY keymap
+loadkmap < /etc/keymaps/fr-azerty.bmap || true
+
 echo "[stage 1] done"
