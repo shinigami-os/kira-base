@@ -9,6 +9,9 @@ mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /run
 mkdir -p /run/udev
+if [ -d /sys/firmware/efi ]; then
+    mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+fi
 
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
