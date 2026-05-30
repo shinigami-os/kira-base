@@ -21,3 +21,4 @@ echo "[stage 3] mounting root (read-only)..."
 mount -o remount,ro /
 
 echo "[stage 3] done"
+
