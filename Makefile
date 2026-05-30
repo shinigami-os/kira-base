@@ -1,3 +1,4 @@
+whoami := $(shell whoami)
 SYSROOT = $(CURDIR)/build/sysroot
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
