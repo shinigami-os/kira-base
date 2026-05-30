@@ -1,4 +1,3 @@
-whoami := $(shell whoami)
 SYSROOT = $(CURDIR)/build/sysroot
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
@@ -27,7 +26,7 @@ DOWNLOADS = \
 
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs
 
-.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages super-soft-clean
 
 all: build/stamps/sysroot.stamp
 
@@ -40,7 +39,7 @@ soft-clean:
 
 super-soft-clean:
 	rm build/stamps/sysroot.stamp build/initramfs.cpio.gz
-	sudo chown -R $(whoami):$(whoami) build/sysroot
+	sudo chown -R $(shell whoami):$(shell whoami) build/sysroot
 
 packages-clean:
 	sudo rm -rf $(SYSROOT)/var/lib/flux/installed \
@@ -409,7 +408,7 @@ build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/sta
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) | build/sysroot/
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch scripts/zsh-login.sh runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -425,16 +424,16 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
 	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/etc/skel/.p10k.zsh
+	install -m 755 scripts/zsh-login.sh $(SYSROOT)/usr/bin/zsh-login
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
 	chmod 600 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
-	printf '#!/bin/sh\nexec -a -zsh /usr/bin/zsh\n' > $(SYSROOT)/usr/bin/zsh-login
-	chmod +x $(SYSROOT)/usr/bin/zsh-login
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
+	touch $(SYSROOT)/etc/sv/getty-tty1/down
 
 	touch $@
 
