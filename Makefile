@@ -451,6 +451,8 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp
 	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install wpa_supplicant; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install efivar; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
 	sudo umount $(SYSROOT)/dev/pts; true
 	sudo umount $(SYSROOT)/dev; true
 	sudo umount $(SYSROOT)/sys; true
