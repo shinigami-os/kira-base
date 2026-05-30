@@ -433,7 +433,6 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
-	touch $(SYSROOT)/etc/sv/getty-tty1/down
 
 	touch $@
 
