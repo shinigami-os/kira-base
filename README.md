@@ -33,7 +33,7 @@ Copy the Kira project minisign public key into `config/etc/flux/flux.pub` before
 Then build:
 
 ```sh
-make                          # builds sysroot
+make                          # builds sysroot (will ask for sudo password)
 sudo make build/stamps/packages.stamp  # installs flux packages (requires root)
 make build/initramfs.cpio.gz  # packages initramfs
 make qemu                     # boots
