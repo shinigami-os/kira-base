@@ -13,6 +13,9 @@ if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
 
+echo "[stage 1] loading modules..."
+modprobe i915
+
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
 
