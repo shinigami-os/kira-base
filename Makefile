@@ -417,6 +417,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
+	rm -f $(SYSROOT)/etc/sv/*/down
 	cp -r config/etc/* $(SYSROOT)/etc/
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	cp /etc/ssl/certs/ca-certificates.crt $(SYSROOT)/etc/ssl/certs/
@@ -433,6 +434,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
+	printf '/bin/sh\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/zsh-login\n' > $(SYSROOT)/etc/shells
 
 	touch $@
 
