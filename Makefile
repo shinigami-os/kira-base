@@ -15,8 +15,11 @@ CURL_V = 8.20.0
 ZSTD_V = 1.5.7
 MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.20
+# Tier: server (no DE) | desktop (SwayFX + full graphics stack)
+TIER ?= desktop
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
+KIRA_DESKTOP = $(CURDIR)/../kira-desktop
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -26,8 +29,7 @@ DOWNLOADS = \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs
-
-.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages super-soft-clean
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages super-soft-clean kira-desktop
 
 all: build/stamps/sysroot.stamp
 
@@ -409,16 +411,36 @@ build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/sta
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	touch $@
 
+build/stamps/kira-desktop.stamp: build/stamps/sysroot.stamp | build/stamps/
+ifeq ($(TIER),desktop)
+    ifeq ($(wildcard $(KIRA_DESKTOP)/Makefile),)
+        $(error kira-desktop repo not found at $(KIRA_DESKTOP). Clone it first.)
+    endif
+endif
+ifeq ($(TIER),desktop)
+	make -C $(KIRA_DESKTOP) CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib"
+	make -C $(KIRA_DESKTOP) install DESTDIR=$(SYSROOT)
+endif
+	touch $@
+
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch scripts/zsh-login.sh runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
 	chmod 755 $(SYSROOT)/run
 	chmod 755 $(SYSROOT)/var/empty
-	
+
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
 	rm -f $(SYSROOT)/etc/sv/*/down
+ifeq ($(TIER),server)
+	touch $(SYSROOT)/etc/sv/getty-tty1/down
+	touch $(SYSROOT)/etc/sv/networkmanager/down
+	touch $(SYSROOT)/etc/sv/dbus/down
+	touch $(SYSROOT)/etc/sv/polkitd/down
+endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
@@ -438,11 +460,22 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
 	printf '/bin/sh\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/zsh-login\n' > $(SYSROOT)/etc/shells
+ifeq ($(TIER),desktop)
+	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
+	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
+	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
+	printf '[ ! -f "$$HOME/.config/sway/config" ] && kira-theme apply kira-default\n' >> $(SYSROOT)/etc/zsh/zprofile
+	printf 'if [ "$$(tty)" = "/dev/tty1" ] && [ -z "$$WAYLAND_DISPLAY" ]; then\n    _active=$$(cat "$$HOME/.config/kira-desktop/active-de" 2>/dev/null)\n    _launcher="/usr/bin/kira-start-$${_active}"\n    [ -x "$$_launcher" ] && exec "$$_launcher"\n    unset _active _launcher\nfi\n' >> $(SYSROOT)/etc/zsh/zprofile
+	mkdir -p $(SYSROOT)/home/kira
+	cp -r $(SYSROOT)/etc/skel/. $(SYSROOT)/home/kira/
+	chmod 700 $(SYSROOT)/home/kira
+	sudo chown -R 1000:1000 $(SYSROOT)/home/kira
+endif
 
 	touch $@
 
-build/stamps/packages.stamp: build/stamps/sysroot.stamp
-	@echo "Note: packages target requires root (sudo make packages)"
+build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-desktop.stamp
+	@echo "Note: packages target requires root (sudo make build/stamps/packages.stamp)"
 	sudo mount --bind /proc $(SYSROOT)/proc
 	sudo mount --bind /sys $(SYSROOT)/sys
 	sudo mount --bind /dev $(SYSROOT)/dev
@@ -459,6 +492,28 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp
 	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install efivar; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
+ifeq ($(TIER),desktop)
+	sudo chroot $(SYSROOT) /usr/bin/flux install mesa; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libwayland; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install wlroots; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libxkbcommon; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install xwayland; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install polkit; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install pipewire; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install wireplumber; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install swayfx; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install swaylock; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install swayidle; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install fuzzel; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install mako; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install foot; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install eww; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install grim; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install slurp; true
+	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
+endif
 	sudo umount $(SYSROOT)/dev/pts; true
 	sudo umount $(SYSROOT)/dev; true
 	sudo umount $(SYSROOT)/sys; true
@@ -471,7 +526,7 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/sysroot.stamp
+build/initramfs.cpio.gz: build/stamps/kira-desktop.stamp
 	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz

@@ -1,3 +1,2 @@
 #!/bin/sh
-
 exec /sbin/getty -n -l /usr/bin/zsh-login 38400 tty1
