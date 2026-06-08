@@ -15,3 +15,5 @@ tape:x:26:
 kvm:x:36:kira
 sgx:x:39:
 wheel:x:998:kira
+messagebus:x:81:
+polkitd:x:102:

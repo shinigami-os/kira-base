@@ -28,7 +28,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/log var/run home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean packages super-soft-clean kira-desktop
 
 all: build/stamps/sysroot.stamp
@@ -440,11 +440,14 @@ ifeq ($(TIER),server)
 	touch $(SYSROOT)/etc/sv/networkmanager/down
 	touch $(SYSROOT)/etc/sv/dbus/down
 	touch $(SYSROOT)/etc/sv/polkitd/down
+	touch $(SYSROOT)/etc/sv/elogind/down
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
+	mkdir -p $(SYSROOT)/run/dbus
+	mkdir -p $(SYSROOT)/var/run/dbus
 	cp /etc/ssl/certs/ca-certificates.crt $(SYSROOT)/etc/ssl/certs/
 	install -m 644 config/zsh/zshrc $(SYSROOT)/root/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
@@ -459,7 +462,11 @@ endif
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
+	touch $(SYSROOT)/run/utmp
 	printf '/bin/sh\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/zsh-login\n' > $(SYSROOT)/etc/shells
+	mkdir -p $(SYSROOT)/run/user
+	chmod 755 $(SYSROOT)/run/user
+	chmod u+s $(SYSROOT)/usr/lib/NetworkManager/nm-dispatcher 2>/dev/null || true
 ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
 	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
@@ -494,17 +501,25 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-deskto
 	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
 ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install mesa; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libwayland; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install wayland; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install wlroots; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install libxkbcommon; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install xwayland; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libcap; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install linux-pam; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install pcre2; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install duktape; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install elogind; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install expat; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install glib; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libndp; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install polkit; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install pipewire; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install wireplumber; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install swayfx; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install swaylock; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install swaylock-effects; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install swayidle; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install fuzzel; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install mako; true
