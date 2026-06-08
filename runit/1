@@ -15,6 +15,8 @@ fi
 mkdir -p /var/run/dbus
 mkdir -p /run/user
 touch /run/utmp
+touch /run/utmp
+ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
 
 echo "[stage 1] loading modules..."
 modprobe i915
