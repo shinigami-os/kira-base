@@ -500,34 +500,19 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-deskto
 	sudo chroot $(SYSROOT) /usr/bin/flux install efivar; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
 ifeq ($(TIER),desktop)
-	sudo chroot $(SYSROOT) /usr/bin/flux install mesa; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install wayland; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install wlroots; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libxkbcommon; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install xwayland; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libcap; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install linux-pam; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install pcre2; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install duktape; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install elogind; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install expat; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install glib; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libndp; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install polkit; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install pipewire; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install wireplumber; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install swayfx; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install swaylock-effects; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install swayidle; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install fuzzel; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install mako; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install foot; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install eww; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install grim; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install slurp; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y mesa; true
+	ln -sf libEGL_mesa.so.0 $(SYSROOT)/usr/lib/libEGL.so.1 2>/dev/null || true
+	ln -sf libEGL_mesa.so.0 $(SYSROOT)/usr/lib/libEGL.so 2>/dev/null || true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y dbus; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y elogind; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y polkit; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y networkmanager; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y pipewire; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y wireplumber; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y xwayland; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y kira-desktop-swayFX; true
 	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
+	chmod u+s $(SYSROOT)/usr/libexec/nm-dispatcher 2>/dev/null || true
 endif
 	sudo umount $(SYSROOT)/dev/pts; true
 	sudo umount $(SYSROOT)/dev; true
