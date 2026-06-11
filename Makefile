@@ -492,7 +492,7 @@ ifeq ($(TIER),desktop)
 	printf 'export XDG_RUNTIME_DIR=/run/user/$$(id -u)\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'mkdir -p "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'chmod 700 "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
-	printf 'if [ "$$(tty)" = "/dev/tty1" ] && [ -z "$$WAYLAND_DISPLAY" ]; then\n    _active=$$(cat "$$HOME/.config/kira-desktop/active-de" 2>/dev/null)\n    _launcher="/usr/bin/kira-start-$${_active}"\n    [ -x "$$_launcher" ] && exec "$$_launcher"\n    unset _active _launcher\nfi\n' >> $(SYSROOT)/etc/zsh/zprofile
+	printf 'if [ "$$(tty)" = "/dev/tty1" ] && [ -z "$$WAYLAND_DISPLAY" ]; then\n    _active=$$(cat "$$HOME/.config/kira-desktop/active-de" 2>/dev/null)\n    _launcher="/usr/bin/kira-start-$${_active}"\n    if [ -x "$$_launcher" ]; then\n        i=0; while [ ! -e /dev/dri/card0 ] && [ $$i -lt 30 ]; do sleep 1; i=$$((i+1)); done\n        exec "$$_launcher"\n    fi\n    unset _active _launcher\nfi\n' >> $(SYSROOT)/etc/zsh/zprofile
 	mkdir -p $(SYSROOT)/home/kira
 	cp -r $(SYSROOT)/etc/skel/. $(SYSROOT)/home/kira/
 	chmod 700 $(SYSROOT)/home/kira
