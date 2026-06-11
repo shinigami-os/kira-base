@@ -444,6 +444,13 @@ ifeq ($(TIER),server)
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
+	cp -Pf \
+		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so \
+		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so \
+		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.28 \
+		$(SYSROOT)/usr/lib/
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
@@ -466,12 +473,14 @@ endif
 	printf '/bin/sh\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/zsh-login\n' > $(SYSROOT)/etc/shells
 	mkdir -p $(SYSROOT)/run/user
 	chmod 755 $(SYSROOT)/run/user
-	chmod u+s $(SYSROOT)/usr/lib/NetworkManager/nm-dispatcher 2>/dev/null || true
 ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
 	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
 	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
 	printf '[ ! -f "$$HOME/.config/sway/config" ] && kira-theme apply kira-default\n' >> $(SYSROOT)/etc/zsh/zprofile
+	printf 'export XDG_RUNTIME_DIR=/run/user/$$(id -u)\n' >> $(SYSROOT)/etc/zsh/zprofile
+	printf 'mkdir -p "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
+	printf 'chmod 700 "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'if [ "$$(tty)" = "/dev/tty1" ] && [ -z "$$WAYLAND_DISPLAY" ]; then\n    _active=$$(cat "$$HOME/.config/kira-desktop/active-de" 2>/dev/null)\n    _launcher="/usr/bin/kira-start-$${_active}"\n    [ -x "$$_launcher" ] && exec "$$_launcher"\n    unset _active _launcher\nfi\n' >> $(SYSROOT)/etc/zsh/zprofile
 	mkdir -p $(SYSROOT)/home/kira
 	cp -r $(SYSROOT)/etc/skel/. $(SYSROOT)/home/kira/
@@ -495,18 +504,23 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-deskto
 	sudo chroot $(SYSROOT) /usr/bin/flux install dosfstools; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install grub; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install wpa_supplicant; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y wpa_supplicant; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install efivar; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
 ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y mesa; true
-	ln -sf libEGL_mesa.so.0 $(SYSROOT)/usr/lib/libEGL.so.1 2>/dev/null || true
-	ln -sf libEGL_mesa.so.0 $(SYSROOT)/usr/lib/libEGL.so 2>/dev/null || true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y dbus; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libglvnd; true
+	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so.1 2>/dev/null || true
+	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so 2>/dev/null || true
+	sudo chroot $(SYSROOT) /usr/bin/flux install mtdev; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y harfbuzz; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install fribidi; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y elogind; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y polkit; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y networkmanager; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y libdisplay-info; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y pipewire; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y wireplumber; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y xwayland; true
