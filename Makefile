@@ -1,5 +1,5 @@
 SYSROOT = $(CURDIR)/build/sysroot
-KERNEL_VERSION := $(shell ls $(SYSROOT)/lib/modules/ 2>/dev/null | tail -1)
+KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
