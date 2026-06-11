@@ -12,6 +12,7 @@ mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
+mkdir -p /run/dbus
 mkdir -p /var/run/dbus
 mkdir -p /run/user
 touch /run/utmp
