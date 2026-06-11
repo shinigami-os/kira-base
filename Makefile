@@ -449,6 +449,10 @@ endif
 	cp /lib/firmware/i915/skl_guc_33.0.0.bin $(SYSROOT)/lib/firmware/i915/
 	cp /lib/firmware/i915/skl_guc_70.1.1.bin $(SYSROOT)/lib/firmware/i915/
 	cp /lib/firmware/i915/skl_huc_2.0.0.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/glk_dmc_ver1_04.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/glk_guc_33.0.0.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/glk_guc_70.1.1.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/glk_huc_4.0.0.bin $(SYSROOT)/lib/firmware/i915/
 	cp -Pf \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
