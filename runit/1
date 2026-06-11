@@ -18,9 +18,7 @@ touch /run/utmp
 ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
 
 echo "[stage 1] loading modules..."
-modprobe i915 2>/tmp/i915.log
-echo "modprobe exit: $?" >> /tmp/i915.log
-dmesg | grep -i "i915\|drm\|gpu\|firmware" >> /tmp/i915.log
+# i915 loaded by udev in stage 2
 
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
