@@ -1,5 +1,5 @@
 SYSROOT = $(CURDIR)/build/sysroot
-KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
+KERNEL_VERSION := $(shell ls $(SYSROOT)/lib/modules/ 2>/dev/null | tail -1)
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -444,6 +444,11 @@ ifeq ($(TIER),server)
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
+	mkdir -p $(SYSROOT)/lib/firmware/i915
+	cp /lib/firmware/i915/skl_dmc_ver1_27.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/skl_guc_33.0.0.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/skl_guc_70.1.1.bin $(SYSROOT)/lib/firmware/i915/
+	cp /lib/firmware/i915/skl_huc_2.0.0.bin $(SYSROOT)/lib/firmware/i915/
 	cp -Pf \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
@@ -451,6 +456,8 @@ endif
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6 \
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.28 \
 		$(SYSROOT)/usr/lib/
+	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
+	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
