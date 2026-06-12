@@ -1,2 +1,7 @@
 #!/bin/sh
-exec /usr/lib/elogind/elogind
+while [ ! -S /var/run/dbus/system_bus_socket ]; do
+    sleep 1
+done
+export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
+/usr/lib/elogind/elogind -D
+exec sleep infinity
