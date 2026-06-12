@@ -17,6 +17,7 @@ mkdir -p /var/run/dbus
 mkdir -p /run/user
 touch /run/utmp
 ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
+ls -la /var/run/ > /tmp/varrun.log
 
 echo "[stage 1] loading modules..."
 # i915 loaded by udev in stage 2
