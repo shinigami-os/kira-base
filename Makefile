@@ -442,6 +442,7 @@ ifeq ($(TIER),server)
 	touch $(SYSROOT)/etc/sv/polkitd/down
 	touch $(SYSROOT)/etc/sv/elogind/down
 	touch $(SYSROOT)/etc/sv/seatd/down
+	touch $(SYSROOT)/etc/sv/i915/down
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
