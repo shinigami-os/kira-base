@@ -441,6 +441,7 @@ ifeq ($(TIER),server)
 	touch $(SYSROOT)/etc/sv/dbus/down
 	touch $(SYSROOT)/etc/sv/polkitd/down
 	touch $(SYSROOT)/etc/sv/elogind/down
+	touch $(SYSROOT)/etc/sv/seatd/down
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
@@ -528,6 +529,8 @@ ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y harfbuzz; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install fribidi; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y libpciaccess; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y seatd; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y elogind; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y polkit; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
