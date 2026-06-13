@@ -43,6 +43,7 @@ soft-clean:
 super-soft-clean:
 	rm build/stamps/sysroot.stamp build/initramfs.cpio.gz
 	sudo chown -R $(shell whoami):$(shell whoami) build/sysroot
+	sudo chown -R $(shell whoami):$(shell whoami) build/stamps/*
 
 packages-clean:
 	sudo rm -rf $(SYSROOT)/var/lib/flux/installed \
@@ -418,11 +419,14 @@ ifeq ($(TIER),desktop)
     endif
 endif
 ifeq ($(TIER),desktop)
-	make -C $(KIRA_DESKTOP) CC=$(MUSL_CC) \
+	$(MAKE) -C $(KIRA_DESKTOP) LLVM=1 CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib"
-	make -C $(KIRA_DESKTOP) install DESTDIR=$(SYSROOT)
-endif
+	$(MAKE) -C $(KIRA_DESKTOP) install DESTDIR=$(SYSROOT)
+	mkdir -p $(SYSROOT)/root/.config
+	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
+	chmod +x $(SYSROOT)/root/.config/eww/launch-bars.sh
+endif	
 	touch $@
 
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch scripts/zsh-login.sh runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
@@ -487,10 +491,11 @@ endif
 	mkdir -p $(SYSROOT)/run/user
 	chmod 755 $(SYSROOT)/run/user
 ifeq ($(TIER),desktop)
+	mkdir -p $(SYSROOT)/root/.config
+	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
 	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
 	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
 	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
-	printf '[ ! -f "$$HOME/.config/sway/config" ] && kira-theme apply kira-default\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'export XDG_RUNTIME_DIR=/run/user/$$(id -u)\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'mkdir -p "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
 	printf 'chmod 700 "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
@@ -538,7 +543,9 @@ ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y libdisplay-info; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y pipewire; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y wireplumber; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y python3; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y xwayland; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y qt6-wayland; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y kira-desktop-swayFX; true
 	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
 	chmod u+s $(SYSROOT)/usr/libexec/nm-dispatcher 2>/dev/null || true
