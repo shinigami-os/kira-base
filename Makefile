@@ -448,7 +448,6 @@ ifeq ($(TIER),server)
 	touch $(SYSROOT)/etc/sv/elogind/down
 	touch $(SYSROOT)/etc/sv/seatd/down
 	touch $(SYSROOT)/etc/sv/i915/down
-	touch $(SYSROOT)/etc/sv/swayfx/down
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
@@ -508,7 +507,6 @@ ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/usr/share/kira/wallpapers
 	cp $(CURDIR)/../kira-assets/wallpapers/default.png $(SYSROOT)/usr/share/kira/wallpapers/
 
-	touch $(SYSROOT)/etc/sv/swayfx/down
 endif
 
 	touch $@
