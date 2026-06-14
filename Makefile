@@ -44,6 +44,7 @@ super-soft-clean:
 	rm build/stamps/sysroot.stamp build/initramfs.cpio.gz
 	sudo chown -R $(shell whoami):$(shell whoami) build/sysroot
 	sudo chown -R $(shell whoami):$(shell whoami) build/stamps/*
+	sudo rm build/sysroot/etc/machine-id
 
 packages-clean:
 	sudo rm -rf $(SYSROOT)/var/lib/flux/installed \
@@ -426,7 +427,7 @@ ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/root/.config
 	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
 	chmod +x $(SYSROOT)/root/.config/eww/launch-bars.sh
-endif	
+endif
 	touch $@
 
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch scripts/zsh-login.sh runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
@@ -447,6 +448,7 @@ ifeq ($(TIER),server)
 	touch $(SYSROOT)/etc/sv/elogind/down
 	touch $(SYSROOT)/etc/sv/seatd/down
 	touch $(SYSROOT)/etc/sv/i915/down
+	touch $(SYSROOT)/etc/sv/swayfx/down
 endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
@@ -494,16 +496,19 @@ ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/root/.config
 	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
 	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
+	mkdir -p $(SYSROOT)/proc/sys/kernel/random/
+	cat /proc/sys/kernel/random/uuid | tr -d '-' > $(SYSROOT)/etc/machine-id
+	chmod 444 $(SYSROOT)/etc/machine-id
 	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
 	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
-	printf 'export XDG_RUNTIME_DIR=/run/user/$$(id -u)\n' >> $(SYSROOT)/etc/zsh/zprofile
-	printf 'mkdir -p "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
-	printf 'chmod 700 "$$XDG_RUNTIME_DIR"\n' >> $(SYSROOT)/etc/zsh/zprofile
-	printf 'if [ "$$(tty)" = "/dev/tty1" ] && [ -z "$$WAYLAND_DISPLAY" ]; then\n    _active=$$(cat "$$HOME/.config/kira-desktop/active-de" 2>/dev/null)\n    _launcher="/usr/bin/kira-start-$${_active}"\n    if [ -x "$$_launcher" ]; then\n        i=0; while [ ! -e /dev/dri/card0 ] && [ $$i -lt 30 ]; do sleep 1; i=$$((i+1)); done\n        exec "$$_launcher"\n    fi\n    unset _active _launcher\nfi\n' >> $(SYSROOT)/etc/zsh/zprofile
 	mkdir -p $(SYSROOT)/home/kira
 	cp -r $(SYSROOT)/etc/skel/. $(SYSROOT)/home/kira/
 	chmod 700 $(SYSROOT)/home/kira
 	sudo chown -R 1000:1000 $(SYSROOT)/home/kira
+	mkdir -p $(SYSROOT)/usr/share/kira/wallpapers
+	cp $(CURDIR)/../kira-assets/wallpapers/default.png $(SYSROOT)/usr/share/kira/wallpapers/
+
+	touch $(SYSROOT)/etc/sv/swayfx/down
 endif
 
 	touch $@
@@ -532,6 +537,8 @@ ifeq ($(TIER),desktop)
 	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so.1 2>/dev/null || true
 	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so 2>/dev/null || true
 	sudo chroot $(SYSROOT) /usr/bin/flux install mtdev; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y raleway-fonts; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y jetbrains-mono-nerd-font; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y harfbuzz; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install fribidi; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
@@ -547,6 +554,9 @@ ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y xwayland; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y qt6-wayland; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y kira-desktop-swayFX; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y iw; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y nm-connection-editor; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y pavucontrol; true
 	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
 	chmod u+s $(SYSROOT)/usr/libexec/nm-dispatcher 2>/dev/null || true
 endif
