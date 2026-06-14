@@ -1,7 +1,7 @@
 #!/bin/sh
-while [ ! -S /run/udev/control ]; do
-    sleep 1
+sleep 5
+for dev in /sys/class/input/event*; do
+    devpath=$(readlink -f "$dev/device")
+    udevadm test "$devpath" > /dev/null 2>&1
 done
-udevadm trigger --action=add --subsystem-match=input
-udevadm settle
-sv down /etc/sv/udev-input-trigger
+touch /etc/sv/udev-input-trigger/down
