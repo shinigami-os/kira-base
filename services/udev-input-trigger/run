@@ -1,7 +1,7 @@
 #!/bin/sh
 sleep 5
-for dev in /sys/class/input/event*; do
-    devpath=$(readlink -f "$dev/device")
-    udevadm test "$devpath" > /dev/null 2>&1
+find /sys/devices -name "event*" -path "*/input/event*" | while read dev; do
+    parent=$(dirname "$dev")
+    udevadm test "$parent" > /dev/null 2>&1
 done
 touch /etc/sv/udev-input-trigger/down
