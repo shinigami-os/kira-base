@@ -13,7 +13,7 @@ if [ "$(tty)" = "/dev/tty1" ]; then
             sleep 1
             i=$((i + 1))
         done
-        "$_launcher"
+        exec "$_launcher"
     fi
 fi
 
