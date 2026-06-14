@@ -1,6 +1,6 @@
 #!/bin/sh
 sleep 5
-find /sys/devices -name "event*" -path "*/input/event*" | while read dev; do
+find /sys/devices -path "*/input/input*/event*" -type d | while read dev; do
     parent=$(dirname "$dev")
     udevadm test "$parent" > /dev/null 2>&1
 done
