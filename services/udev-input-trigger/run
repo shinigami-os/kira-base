@@ -1,0 +1,7 @@
+#!/bin/sh
+while [ ! -S /run/udev/control ]; do
+    sleep 1
+done
+udevadm trigger --action=add --subsystem-match=input
+udevadm settle
+sv down /etc/sv/udev-input-trigger
