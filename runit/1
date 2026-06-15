@@ -22,6 +22,7 @@ mount -t tmpfs tmpfs /dev/shm
 
 echo "[stage 1] loading modules..."
 # i915 loaded by udev in stage 2
+modprobe iwlwifi
 
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
