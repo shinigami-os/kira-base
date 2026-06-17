@@ -15,6 +15,7 @@ CURL_V = 8.20.0
 ZSTD_V = 1.5.7
 MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.20
+CA_CERTIFICATES_V = 2026-05-14
 # Tier: server (no DE) | desktop (SwayFX + full graphics stack)
 TIER ?= desktop
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
@@ -109,6 +110,9 @@ build/sources/libsodium-$(LIBSODIUM_V).tar.gz: | build/sources/
 
 build/sources/minisign-$(MINISIGN_V).tar.gz: | build/sources/
 	wget -O $@ https://github.com/jedisct1/minisign/archive/refs/tags/$(MINISIGN_V).tar.gz
+
+build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem: | build/sources/
+	wget -O $@ https://curl.se/ca/cacert-$(CA_CERTIFICATES_V).pem
 
 
 
@@ -351,7 +355,7 @@ build/stamps/zsh-plugins.stamp: | build/stamps/ build/sources/
 
 	touch $@
 
-build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp | build/stamps/
+build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -370,6 +374,9 @@ build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp b
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
 	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
+
+	mkdir -p $(SYSROOT)/etc/ssl/certs
+	cp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem $(SYSROOT)/etc/ssl/certs/ca-certificates.crt
 	
 	touch $@
 
@@ -473,7 +480,6 @@ endif
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
 	mkdir -p $(SYSROOT)/var/run/dbus
-	cp /etc/ssl/certs/ca-certificates.crt $(SYSROOT)/etc/ssl/certs/
 	install -m 644 config/zsh/zshrc $(SYSROOT)/root/.zshrc
 	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
 	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
@@ -523,7 +529,7 @@ build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-deskto
 	sudo chroot $(SYSROOT) /usr/bin/flux install parted; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install e2fsprogs; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install dosfstools; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install grub; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install -y grub; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y wpa_supplicant; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
@@ -554,6 +560,7 @@ ifeq ($(TIER),desktop)
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y kira-desktop-swayFX; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y iw; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y nm-connection-editor; true
+	sudo chroot $(SYSROOT) /usr/bin/flux install libfyaml; true
 	sudo chroot $(SYSROOT) /usr/bin/flux install -y pavucontrol; true
 	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
 	chmod u+s $(SYSROOT)/usr/libexec/nm-dispatcher 2>/dev/null || true
