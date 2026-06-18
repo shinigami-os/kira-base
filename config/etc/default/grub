@@ -1,5 +1,5 @@
 GRUB_DISTRIBUTOR="Kira Linux"
 GRUB_DEFAULT=0
 GRUB_TIMEOUT=5
-GRUB_CMDLINE_LINUX="vga=normal nomodeset init=/sbin/runit-init rw"
+GRUB_CMDLINE_LINUX="init=/sbin/runit-init rw"
 GRUB_CMDLINE_LINUX_DEFAULT=""
