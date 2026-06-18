@@ -504,6 +504,9 @@ ifeq ($(TIER),desktop)
 	mkdir -p $(SYSROOT)/proc/sys/kernel/random/
 	cat /proc/sys/kernel/random/uuid | tr -d '-' > $(SYSROOT)/etc/machine-id
 	chmod 444 $(SYSROOT)/etc/machine-id
+	mkdir -p $(SYSROOT)/root/.config/kira-desktop
+	printf 'swayFX\n' > $(SYSROOT)/root/.config/kira-desktop/active-de
+	printf 'kira-default\n' > $(SYSROOT)/root/.config/kira-desktop/current-theme
 	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
 	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
 	mkdir -p $(SYSROOT)/home/kira
