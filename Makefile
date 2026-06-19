@@ -515,6 +515,7 @@ ifeq ($(TIER),desktop)
 	sudo chown -R 1000:1000 $(SYSROOT)/home/kira
 	mkdir -p $(SYSROOT)/usr/share/kira/wallpapers
 	cp $(CURDIR)/../kira-assets/wallpapers/default.png $(SYSROOT)/usr/share/kira/wallpapers/
+	touch $(SYSROOT)/etc/sv/console/down
 
 endif
 
