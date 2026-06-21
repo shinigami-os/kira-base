@@ -1,3 +1,0 @@
-#!/bin/sh
-modprobe i915 2>/dev/null || true
-sleep infinity

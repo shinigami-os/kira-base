@@ -8,19 +8,13 @@ EUDEV_V = 3.2.14
 DHCPCD_V = 10.3.2
 ZLIB_V = 1.3.2
 LIBRESSL_V = 4.3.1
-OPENSSH_V = 10.3p1
-NCURSES_V = 6.6
-ZSH_V = 5.9
 CURL_V = 8.20.0
 ZSTD_V = 1.5.7
 MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.20
 CA_CERTIFICATES_V = 2026-05-14
-# Tier: server (no DE) | desktop (SwayFX + full graphics stack)
-TIER ?= desktop
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
-KIRA_DESKTOP = $(CURDIR)/../kira-desktop
 
 MUSL_CC = $(SYSROOT)/bin/musl-gcc
 
@@ -30,7 +24,7 @@ DOWNLOADS = \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
-.PHONY: all clean build sysroot sources initramfs qemu soft-clean packages super-soft-clean kira-desktop
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean super-soft-clean
 
 all: build/stamps/sysroot.stamp
 
@@ -46,12 +40,6 @@ super-soft-clean:
 	sudo chown -R $(shell whoami):$(shell whoami) build/sysroot
 	sudo chown -R $(shell whoami):$(shell whoami) build/stamps/*
 	sudo rm build/sysroot/etc/machine-id
-
-packages-clean:
-	sudo rm -rf $(SYSROOT)/var/lib/flux/installed \
-		$(SYSROOT)/var/cache/flux \
-		$(SYSROOT)/var/lib/flux/recipes
-	sudo rm -f build/stamps/packages.stamp
 
 #! Directories
 build/stamps/:
@@ -86,15 +74,6 @@ build/sources/zlib-$(ZLIB_V).tar.gz: | build/sources/
 
 build/sources/libressl-$(LIBRESSL_V).tar.gz: | build/sources/
 	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$(LIBRESSL_V).tar.gz
-
-build/sources/openssh-$(OPENSSH_V).tar.gz: | build/sources/
-	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-$(OPENSSH_V).tar.gz
-
-build/sources/ncurses-$(NCURSES_V).tar.gz: | build/sources/
-	wget -O $@ https://ftp.gnu.org/gnu/ncurses/ncurses-$(NCURSES_V).tar.gz
-
-build/sources/zsh-$(ZSH_V).tar.xz: | build/sources/
-	wget -O $@ https://sourceforge.net/projects/zsh/files/zsh/$(ZSH_V)/zsh-$(ZSH_V).tar.xz
 
 build/sources/flux/: | build/sources/
 	git clone --depth=1 https://github.com/shinigami-os/flux $@
@@ -139,15 +118,6 @@ build/sources/zlib-$(ZLIB_V)/: build/sources/zlib-$(ZLIB_V).tar.gz
 
 build/sources/libressl-$(LIBRESSL_V)/: build/sources/libressl-$(LIBRESSL_V).tar.gz
 	tar xzf $< -C build/sources
-
-build/sources/openssh-$(OPENSSH_V)/: build/sources/openssh-$(OPENSSH_V).tar.gz
-	tar xzf $< -C build/sources
-
-build/sources/ncurses-$(NCURSES_V)/: build/sources/ncurses-$(NCURSES_V).tar.gz
-	tar xzf $< -C build/sources
-
-build/sources/zsh-$(ZSH_V)/: build/sources/zsh-$(ZSH_V).tar.xz
-	tar xJf $< -C build/sources
 
 build/sources/curl-$(CURL_V)/: build/sources/curl-$(CURL_V).tar.gz
 	tar xzf $< -C build/sources
@@ -268,93 +238,6 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 	
 	touch $@
 
-build/stamps/openssh.stamp: build/sources/openssh-$(OPENSSH_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp | build/stamps/
-	cd $(<D) && \
-	./configure \
-		--host=x86_64-linux-musl \
-		--prefix=/usr \
-		--sysconfdir=/etc/ssh \
-		--with-privsep-path=/var/empty \
-		--with-ssl-dir=$(SYSROOT)/usr \
-		--with-zlib=$(SYSROOT)/usr \
-		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/usr/include" \
-		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
-	make install DESTDIR=$(SYSROOT)
-
-	touch $@
-
-build/stamps/ncurses.stamp: build/sources/ncurses-$(NCURSES_V)/ build/stamps/musl.stamp | build/stamps/
-	cd $(<D) && \
-	./configure \
-		--prefix=/usr \
-		--host=x86_64-linux-musl \
-		--with-shared \
-		--enable-widec \
-		--without-tests \
-		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/usr/include" \
-		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
-	make install DESTDIR=$(SYSROOT)
-	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libncurses.so
-	ln -sf libncursesw.so $(SYSROOT)/usr/lib/libtinfo.so
-	printf '#pragma once\n#include <ncurses.h>\n' > $(SYSROOT)/usr/include/termcap.h
-	
-	touch $@
-
-build/stamps/zsh.stamp: build/sources/zsh-$(ZSH_V)/ build/stamps/musl.stamp build/stamps/ncurses.stamp | build/stamps/
-	sed -i 's/^static char \*boolcodes\[\]/const char *const boolcodes[]/' $(<D)/Src/Modules/termcap.c
-	sed -i 's/^static const char \*const boolcodes\[\]/const char *const boolcodes[]/' $(<D)/Src/Modules/termcap.c
-	sed -i '/#include.*zsh\.mdh/a #include <termcap.h>' $(<D)/Src/prompt.c
-	rm -f $(<D)/config.cache
-	cp /usr/share/misc/config.sub $(<D)/config.sub
-	cp /usr/share/misc/config.guess $(<D)/config.guess
-	cd $(<D) && \
-	./configure \
-		--prefix=/usr \
-		--host=x86_64-linux-musl \
-		--sysconfdir=/etc/zsh \
-		--with-term-lib=ncursesw \
-		--disable-gdbm \
-		--disable-pcre \
-		--enable-dynamic \
-		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/usr/include -DNCURSES_WIDECHAR=1" \
-		LDFLAGS="-L$(SYSROOT)/usr/lib" \
-		LIBS="-lncursesw -ldl"
-	sed -i 's|/\* #undef HAVE_TERM_H \*/|#define HAVE_TERM_H 1|' $(<D)/config.h
-	sed -i 's|/\* #undef ZSH_HAVE_TERM_H \*/|#define ZSH_HAVE_TERM_H 1|' $(<D)/config.h
-	sed -i 's|/\* #undef HAVE_TERMCAP_H \*/|#define HAVE_TERMCAP_H 1|' $(<D)/config.h
-	sed -i 's|/\* #undef HAVE_TGOTO \*/|#define HAVE_TGOTO 1|' $(<D)/config.h
-	sed -i 's|/\* #undef DYNAMIC \*/|#define DYNAMIC 1|' $(<D)/config.h
-	sed -i 's|/\* The extension used for dynamically loaded modules\. \*/|/* The extension used for dynamically loaded modules. */\n#define MODULE_EXT ".so"|' $(<D)/config.h
-	sed -i '/name=zsh\/main\|name=zsh\/db\/gdbm/!s/link=static/link=dynamic/g' $(<D)/config.modules
-	sed -i '/name=zsh\/db\/gdbm/!s/link=no auto=yes load=no/link=dynamic auto=yes load=yes/g' $(<D)/config.modules
-	cd $(<D) && make -j$(nproc) && make install DESTDIR=$(SYSROOT)
-	
-	touch $@
-
-build/stamps/zsh-plugins.stamp: | build/stamps/ build/sources/
-	mkdir -p $(SYSROOT)/usr/share/zsh/plugins
-	wget -O build/sources/zsh-autosuggestions.tar.gz https://github.com/zsh-users/zsh-autosuggestions/archive/refs/tags/v0.7.1.tar.gz
-	tar xzf build/sources/zsh-autosuggestions.tar.gz -C build/sources
-	mv build/sources/zsh-autosuggestions-0.7.1 $(SYSROOT)/usr/share/zsh/plugins/zsh-autosuggestions
-
-	wget -O build/sources/zsh-syntax-highlighting.tar.gz https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/tags/0.8.0.tar.gz
-	tar xzf build/sources/zsh-syntax-highlighting.tar.gz -C build/sources
-	mv build/sources/zsh-syntax-highlighting-0.8.0 $(SYSROOT)/usr/share/zsh/plugins/zsh-syntax-highlighting
-
-	wget -O build/sources/powerlevel10k.tar.gz https://github.com/romkatv/powerlevel10k/archive/refs/tags/v1.20.0.tar.gz
-	tar xzf build/sources/powerlevel10k.tar.gz -C build/sources
-	mv build/sources/powerlevel10k-1.20.0 $(SYSROOT)/usr/share/zsh/plugins/powerlevel10k
-
-	mkdir -p $(SYSROOT)/usr/share/zsh/plugins/git
-	wget -O $(SYSROOT)/usr/share/zsh/plugins/git/git.plugin.zsh https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/plugins/git/git.plugin.zsh
-
-	touch $@
-
 build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
 	cd $(<D) && \
 	./configure \
@@ -420,24 +303,7 @@ build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/sta
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	touch $@
 
-build/stamps/kira-desktop.stamp: build/stamps/sysroot.stamp | build/stamps/
-ifeq ($(TIER),desktop)
-    ifeq ($(wildcard $(KIRA_DESKTOP)/Makefile),)
-        $(error kira-desktop repo not found at $(KIRA_DESKTOP). Clone it first.)
-    endif
-endif
-ifeq ($(TIER),desktop)
-	$(MAKE) -C $(KIRA_DESKTOP) LLVM=1 CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/usr/include" \
-		LDFLAGS="-L$(SYSROOT)/usr/lib"
-	$(MAKE) -C $(KIRA_DESKTOP) install DESTDIR=$(SYSROOT)
-	mkdir -p $(SYSROOT)/root/.config
-	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
-	chmod +x $(SYSROOT)/root/.config/eww/launch-bars.sh
-endif
-	touch $@
-
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/openssh.stamp build/stamps/zsh.stamp build/stamps/zsh-plugins.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch scripts/zsh-login.sh runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/zsh/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -447,26 +313,8 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
 	rm -f $(SYSROOT)/etc/sv/*/down
-ifeq ($(TIER),server)
-	touch $(SYSROOT)/etc/sv/getty-tty1/down
-	touch $(SYSROOT)/etc/sv/networkmanager/down
-	touch $(SYSROOT)/etc/sv/dbus/down
-	touch $(SYSROOT)/etc/sv/polkitd/down
-	touch $(SYSROOT)/etc/sv/elogind/down
-	touch $(SYSROOT)/etc/sv/seatd/down
-	touch $(SYSROOT)/etc/sv/i915/down
-endif
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
-	mkdir -p $(SYSROOT)/lib/firmware/i915
-	cp /lib/firmware/i915/skl_dmc_ver1_27.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/skl_guc_33.0.0.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/skl_guc_70.1.1.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/skl_huc_2.0.0.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/glk_dmc_ver1_04.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/glk_guc_33.0.0.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/glk_guc_70.1.1.bin $(SYSROOT)/lib/firmware/i915/
-	cp /lib/firmware/i915/glk_huc_4.0.0.bin $(SYSROOT)/lib/firmware/i915/
 	cp -Pf \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so \
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
@@ -480,11 +328,6 @@ endif
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
 	mkdir -p $(SYSROOT)/var/run/dbus
-	install -m 644 config/zsh/zshrc $(SYSROOT)/root/.zshrc
-	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/root/.p10k.zsh
-	install -m 644 config/zsh/zshrc $(SYSROOT)/etc/skel/.zshrc
-	install -m 644 config/zsh/p10k.zsh $(SYSROOT)/etc/skel/.p10k.zsh
-	install -m 755 scripts/zsh-login.sh $(SYSROOT)/usr/bin/zsh-login
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
 	chmod 600 $(SYSROOT)/etc/shadow
@@ -494,85 +337,9 @@ endif
 	touch $(SYSROOT)/var/log/lastlog
 	touch $(SYSROOT)/var/log/wtmp
 	touch $(SYSROOT)/run/utmp
-	printf '/bin/sh\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/zsh-login\n' > $(SYSROOT)/etc/shells
+	printf '/bin/sh\n' > $(SYSROOT)/etc/shells
 	mkdir -p $(SYSROOT)/run/user
 	chmod 755 $(SYSROOT)/run/user
-ifeq ($(TIER),desktop)
-	mkdir -p $(SYSROOT)/root/.config
-	cp -r $(KIRA_DESKTOP)/config/* $(SYSROOT)/root/.config/
-	mkdir -p $(SYSROOT)/etc/skel/.config/kira-desktop
-	mkdir -p $(SYSROOT)/proc/sys/kernel/random/
-	cat /proc/sys/kernel/random/uuid | tr -d '-' > $(SYSROOT)/etc/machine-id
-	chmod 444 $(SYSROOT)/etc/machine-id
-	mkdir -p $(SYSROOT)/root/.config/kira-desktop
-	printf 'swayFX\n' > $(SYSROOT)/root/.config/kira-desktop/active-de
-	printf 'kira-default\n' > $(SYSROOT)/root/.config/kira-desktop/current-theme
-	printf 'swayFX\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/active-de
-	printf 'kira-default\n' > $(SYSROOT)/etc/skel/.config/kira-desktop/current-theme
-	mkdir -p $(SYSROOT)/home/kira
-	cp -r $(SYSROOT)/etc/skel/. $(SYSROOT)/home/kira/
-	chmod 700 $(SYSROOT)/home/kira
-	sudo chown -R 1000:1000 $(SYSROOT)/home/kira
-	mkdir -p $(SYSROOT)/usr/share/kira/wallpapers
-	cp $(CURDIR)/../kira-assets/wallpapers/default.png $(SYSROOT)/usr/share/kira/wallpapers/
-	touch $(SYSROOT)/etc/sv/console/down
-
-endif
-
-	touch $@
-
-build/stamps/packages.stamp: build/stamps/sysroot.stamp build/stamps/kira-desktop.stamp
-	@echo "Note: packages target requires root (sudo make build/stamps/packages.stamp)"
-	sudo mount --bind /proc $(SYSROOT)/proc
-	sudo mount --bind /sys $(SYSROOT)/sys
-	sudo mount --bind /dev $(SYSROOT)/dev
-	sudo mount --bind /dev/pts $(SYSROOT)/dev/pts
-	sudo cp /etc/resolv.conf $(SYSROOT)/etc/resolv.conf
-	sudo chroot $(SYSROOT) /usr/bin/flux update; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install util-linux; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install parted; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install e2fsprogs; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install dosfstools; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y grub; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libnl; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y wpa_supplicant; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install shadow; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install efivar; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install efibootmgr; true
-ifeq ($(TIER),desktop)
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y mesa; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libglvnd; true
-	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so.1 2>/dev/null || true
-	ln -sf libEGL.so.1.1.0 $(SYSROOT)/usr/lib/libEGL.so 2>/dev/null || true
-	sudo chroot $(SYSROOT) /usr/bin/flux install mtdev; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y raleway-fonts; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y jetbrains-mono-nerd-font; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y harfbuzz; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install fribidi; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install dbus; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y libpciaccess; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y seatd; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y elogind; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y polkit; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install networkmanager; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y libdisplay-info; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y pipewire; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y wireplumber; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y python3; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y xwayland; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y qt6-wayland; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y kira-desktop-swayFX; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y iw; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y nm-connection-editor; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install libfyaml; true
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y pavucontrol; true
-	sudo chmod 755 $(SYSROOT)/var/lib/NetworkManager 2>/dev/null || true
-	chmod u+s $(SYSROOT)/usr/libexec/nm-dispatcher 2>/dev/null || true
-endif
-	sudo umount $(SYSROOT)/dev/pts; true
-	sudo umount $(SYSROOT)/dev; true
-	sudo umount $(SYSROOT)/sys; true
-	sudo umount $(SYSROOT)/proc; true
 
 	touch $@
 
@@ -581,7 +348,7 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/kira-desktop.stamp
+build/initramfs.cpio.gz: build/stamps/sysroot.stamp
 	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
 
 qemu: build/initramfs.cpio.gz

@@ -30,9 +30,6 @@ register eudev         3.2.14
 register dhcpcd        10.3.2
 register zlib          1.3.2
 register libressl      4.3.1
-register openssh       10.3p1
-register ncurses       6.6
-register zsh           5.9
 register curl          8.20.0
 register zstd          1.5.7
 register libsodium     1.0.20

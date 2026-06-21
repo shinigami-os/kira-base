@@ -1,3 +1,0 @@
-#!/bin/sh
-sleep 3
-exec dbus-daemon --system --nofork --nopidfile
