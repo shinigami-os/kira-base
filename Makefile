@@ -26,7 +26,7 @@ DOWNLOADS = \
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean super-soft-clean
 
-all: build/stamps/sysroot.stamp
+all: build/initramfs.cpio.gz
 
 clean:
 	rm -rf build
