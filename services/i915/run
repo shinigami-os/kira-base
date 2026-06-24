@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ "$(cat /etc/kira-tier 2>/dev/null)" = "desktop" ]; then
+    modprobe i915 2>/dev/null || true
+fi
+touch /etc/sv/i915/down
