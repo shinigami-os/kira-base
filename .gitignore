@@ -8,3 +8,6 @@ build/
 
 # OS
 .DS_Store
+
+# My scripts
+push-base-release.sh

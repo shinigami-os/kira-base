@@ -8,6 +8,8 @@ mount -t devtmpfs devtmpfs /dev
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /run
+# Remount root read-write (initramfs mounted it ro)
+mount -o remount,rw /
 mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
@@ -19,10 +21,6 @@ touch /run/utmp
 ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
 mkdir -p /dev/shm
 mount -t tmpfs tmpfs /dev/shm
-
-echo "[stage 1] loading modules..."
-# i915 loaded by udev in stage 2
-modprobe iwlwifi
 
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname

@@ -1,0 +1,84 @@
+#!/bin/sh
+# Initramfs pre-stage 1: mount real root and switch_root into it.
+# Keeps nothing : this entire environment is discarded after switch_root.
+# PATH is intentionally NOT exported: it's only needed for this script's
+# own command lookups (mount/switch_root/etc live in /sbin here), and
+# must not leak through switch_root into the real system's environment,
+# where utilities like setsid live in /usr/bin : a wider PATH there is
+# the real system's job to set, not this throwaway initramfs's.
+PATH=/bin:/sbin
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+
+# Parse root= from kernel cmdline
+ROOT=$(cat /proc/cmdline | tr ' ' '\n' | grep '^root=' | cut -d= -f2-)
+
+if [ -z "$ROOT" ]; then
+    echo "[initramfs] ERROR: no root= in cmdline"
+    exec /bin/sh
+fi
+
+mkdir -p /newroot
+
+if [ "$ROOT" = "live" ]; then
+    mkdir -p /cdrom
+    i=0
+    found=0
+    while [ $found -eq 0 ]; do
+        for dev in /sys/block/*; do
+            name=$(basename "$dev")
+            case "$name" in
+                loop*|ram*) continue ;;
+            esac
+            if mount -t iso9660 -o ro "/dev/$name" /cdrom 2>/dev/null; then
+                if [ -f /cdrom/live-rootfs.tar.gz ]; then
+                    found=1
+                    break
+                fi
+                umount /cdrom
+            fi
+            for part in "$dev"/*; do
+                [ -d "$part" ] || continue
+                pname=$(basename "$part")
+                [ -e "/dev/$pname" ] || continue
+                if mount -t iso9660 -o ro "/dev/$pname" /cdrom 2>/dev/null; then
+                    if [ -f /cdrom/live-rootfs.tar.gz ]; then
+                        found=1
+                        break 2
+                    fi
+                    umount /cdrom
+                fi
+            done
+        done
+        if [ $found -eq 0 ]; then
+            i=$((i + 1))
+            if [ $i -ge 30 ]; then
+                echo "[initramfs] ERROR: live-rootfs.tar.gz not found on any iso9660 media after 30s"
+                exec /bin/sh
+            fi
+            sleep 1
+        fi
+    done
+
+    mount -t tmpfs tmpfs /newroot
+    tar -xzpf /cdrom/live-rootfs.tar.gz -C /newroot
+    umount /cdrom
+
+    exec switch_root /newroot /sbin/runit-init
+fi
+
+# Installed-disk boot: wait for the root device and mount it read-only
+# (real runit/1 on disk handles the rw remount later)
+i=0
+until mount -o ro "$ROOT" /newroot 2>/dev/null; do
+    i=$((i + 1))
+    if [ $i -ge 30 ]; then
+        echo "[initramfs] ERROR: failed to mount root=$ROOT after 30s"
+        exec /bin/sh
+    fi
+    sleep 1
+done
+
+exec switch_root /newroot /sbin/runit-init

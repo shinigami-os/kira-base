@@ -1,5 +1,8 @@
 SYSROOT = $(CURDIR)/build/sysroot
+INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
+# release-based, matches flux's scheme: YY.MM, optionally -N for a hotfix. Tag the repo with the same string.
+KIRA_BASE_VERSION = 26.06
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -24,22 +27,16 @@ DOWNLOADS = \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
-.PHONY: all clean build sysroot sources initramfs qemu soft-clean super-soft-clean
+.PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
-all: build/initramfs.cpio.gz
+all: build/initramfs.cpio.gz build/rootfs.tar.gz
 
 clean:
 	rm -rf build
 
 soft-clean:
-	rm -rf build/stamps build/initramfs.cpio.gz
+	rm -rf build/stamps build/initramfs.cpio.gz build/initramfs-root build/rootfs.tar.gz
 	sudo rm -rf $(SYSROOT)
-
-super-soft-clean:
-	rm build/stamps/sysroot.stamp build/initramfs.cpio.gz
-	sudo chown -R $(shell whoami):$(shell whoami) build/sysroot
-	sudo chown -R $(shell whoami):$(shell whoami) build/stamps/*
-	sudo rm build/sysroot/etc/machine-id
 
 #! Directories
 build/stamps/:
@@ -340,6 +337,8 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	printf '/bin/sh\n' > $(SYSROOT)/etc/shells
 	mkdir -p $(SYSROOT)/run/user
 	chmod 755 $(SYSROOT)/run/user
+	printf 'KIRA_BASE_VERSION=%s\n' "$(KIRA_BASE_VERSION)" > $(SYSROOT)/etc/kira-release
+	printf 'live /lib/libc.so\nlive /bin/busybox\nlive /usr/bin/curl\nlive /etc/ssl/certs/ca-certificates.crt\nlive /usr/sbin/dhcpcd\nrestart:eudev /usr/sbin/udevd\nboot /sbin/runit\nboot /sbin/runit-init\nboot /sbin/sv\nboot /sbin/chpst\nboot /sbin/runsv\nboot /sbin/runsvdir\nboot /sbin/svlogd\nboot /etc/runit/1\nboot /etc/runit/2\nboot /etc/runit/3\n' > $(SYSROOT)/etc/kira-update-manifest
 
 	touch $@
 
@@ -348,15 +347,38 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/sysroot.stamp
-	cd $(SYSROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs.cpio.gz
+build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs | build/
+	rm -rf $(INITRAMFS_ROOT)
+	mkdir -p $(INITRAMFS_ROOT)/bin \
+			$(INITRAMFS_ROOT)/sbin \
+	        $(INITRAMFS_ROOT)/lib \
+	        $(INITRAMFS_ROOT)/proc \
+	        $(INITRAMFS_ROOT)/sys \
+	        $(INITRAMFS_ROOT)/dev \
+	        $(INITRAMFS_ROOT)/newroot
+	mkdir -p $(INITRAMFS_ROOT)/cdrom
+	cp $(SYSROOT)/lib/ld-musl-x86_64.so.1 $(INITRAMFS_ROOT)/lib/
+	cp $(SYSROOT)/bin/busybox $(INITRAMFS_ROOT)/bin/busybox
+	for cmd in sh cat grep tr cut sleep mkdir basename tar; do \
+		ln -sf busybox $(INITRAMFS_ROOT)/bin/$$cmd; \
+	done
+	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/mount
+	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/umount
+	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/switch_root
+	cp runit/1-initramfs $(INITRAMFS_ROOT)/init
+	chmod +x $(INITRAMFS_ROOT)/init
+	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip > ../initramfs.cpio.gz
+
+build/rootfs.tar.gz: build/stamps/sysroot.stamp | build/
+	@echo "[kira-base] packaging root filesystem..."
+	tar -czpf $@ --numeric-owner -C $(SYSROOT) .
 
 qemu: build/initramfs.cpio.gz
 	qemu-system-x86_64 \
 		-kernel $(SHINIGAMI)/arch/x86/boot/bzImage \
 		-initrd build/initramfs.cpio.gz \
-		-append "console=ttyS0 rdinit=/sbin/runit-init" \
+		-append "console=ttyS0 rdinit=/init" \
 		-nographic \
-		-m 8G \
+		-m 512M \
 		-netdev user,id=net0,hostfwd=tcp::2222-:22 \
 		-device e1000,netdev=net0
