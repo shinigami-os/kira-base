@@ -1,3 +1,4 @@
 #!/bin/sh
+rm -f /etc/sv/udev-input-trigger/down /etc/sv/i915/down
 echo "[stage 2] starting service supervision..."
 exec runsvdir /etc/sv

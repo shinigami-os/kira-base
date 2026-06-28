@@ -2,7 +2,7 @@ SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 # release-based, matches flux's scheme: YY.MM, optionally -N for a hotfix. Tag the repo with the same string.
-KIRA_BASE_VERSION = 26.06
+KIRA_BASE_VERSION = 26.06-1
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -19,7 +19,7 @@ CA_CERTIFICATES_V = 2026-05-14
 # you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
-MUSL_CC = $(SYSROOT)/bin/musl-gcc
+MUSL_CC = $(SYSROOT)/usr/bin/musl-gcc
 
 DOWNLOADS = \
 	build/sources/musl-$(MUSL_V).tar.gz \
@@ -132,11 +132,11 @@ build/sources/minisign-$(MINISIGN_V)/: build/sources/minisign-$(MINISIGN_V).tar.
 #! Compile
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 	cd $(<D) && \
-	./configure --prefix=$(SYSROOT) --syslibdir=$(SYSROOT)/lib && \
+	./configure --prefix=$(SYSROOT)/usr --syslibdir=$(SYSROOT)/lib && \
 	make && \
 	make install
-	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/lib/musl-gcc.specs
-	ln -sf libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
+	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/usr/lib/musl-gcc.specs
+	ln -sf ../usr/lib/libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
 
 	touch $@
 
@@ -177,8 +177,8 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		--disable-selinux \
 		--disable-kmod \
 		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/include" \
-		LDFLAGS="-L$(SYSROOT)/lib" && \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
 	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
 	find $(SYSROOT) -type l | while read link; do \
@@ -204,7 +204,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 		--without-dev \
 		--host=x86_64-linux-musl \
 		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
 	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
@@ -225,7 +225,7 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 		--prefix=/usr \
 		--host=x86_64-linux-musl \
 		CC=$(MUSL_CC) \
-		CFLAGS="-I$(SYSROOT)/include -I$(SYSROOT)/usr/include" \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
 	make -j$(nproc) && \
 	make install DESTDIR=$(SYSROOT)
@@ -343,7 +343,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	touch $@
 
 build/stamps/kernel-headers.stamp: | build/stamps/
-	make -j$(nproc) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)
+	make -j$(nproc) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)/usr
 	touch $@
 
 #! Targets
