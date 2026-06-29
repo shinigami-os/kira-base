@@ -317,7 +317,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so \
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.28 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.29 \
 		$(SYSROOT)/usr/lib/
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
