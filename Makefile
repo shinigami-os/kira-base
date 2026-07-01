@@ -318,6 +318,12 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so \
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6 \
 		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.29 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so \
+		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so.1 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so.1.0.0 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so \
+		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so.1 \
+		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so.1.2.0 \
 		$(SYSROOT)/usr/lib/
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
