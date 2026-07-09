@@ -11,3 +11,4 @@ build/
 
 # My scripts
 push-base-release.sh
+push-kernel-release.sh
