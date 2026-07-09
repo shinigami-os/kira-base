@@ -336,7 +336,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\n' > $(SYSROOT)/etc/pam.d/login
 	chmod 644 $(SYSROOT)/etc/pam.d/login
-	chown root:root $(SYSROOT)/etc/shadow
+	sudo chown root:root $(SYSROOT)/etc/shadow
 	chmod 640 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
