@@ -2,7 +2,7 @@ SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 # release-based, matches flux's scheme: YY.MM, optionally -N for a hotfix. Tag the repo with the same string.
-KIRA_BASE_VERSION = 26.06-1
+KIRA_BASE_VERSION = 26.07
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -333,7 +333,11 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	mkdir -p $(SYSROOT)/var/run/dbus
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
-	chmod 600 $(SYSROOT)/etc/shadow
+	mkdir -p $(SYSROOT)/etc/pam.d
+	printf 'auth required pam_unix.so\naccount required pam_unix.so\n' > $(SYSROOT)/etc/pam.d/login
+	chmod 644 $(SYSROOT)/etc/pam.d/login
+	chown root:root $(SYSROOT)/etc/shadow
+	chmod 640 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
