@@ -382,6 +382,8 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs | build/
 
 build/rootfs.tar.gz: build/stamps/sysroot.stamp | build/
 	@echo "[kira-base] packaging root filesystem..."
+	sudo chown root:root $(SYSROOT)
+	sudo chmod 755 $(SYSROOT)
 	sudo tar -czpf $@ --numeric-owner -C $(SYSROOT) .
 
 qemu: build/initramfs.cpio.gz
