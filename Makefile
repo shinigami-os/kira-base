@@ -32,7 +32,7 @@ SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin us
 all: build/initramfs.cpio.gz build/rootfs.tar.gz
 
 clean:
-	rm -rf build
+	sudo rm -rf build
 
 soft-clean:
 	rm -rf build/stamps build/initramfs.cpio.gz build/initramfs-root build/rootfs.tar.gz
@@ -327,6 +327,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 		$(SYSROOT)/usr/lib/
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
+	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
@@ -335,9 +336,9 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\n' > $(SYSROOT)/etc/pam.d/login
-	chmod 644 $(SYSROOT)/etc/pam.d/login
+	sudo chmod 644 $(SYSROOT)/etc/pam.d/login
 	sudo chown root:root $(SYSROOT)/etc/shadow
-	chmod 640 $(SYSROOT)/etc/shadow
+	sudo chmod 640 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
 	chmod +x $(SYSROOT)/etc/sv/*/finish 2>/dev/null || true
@@ -346,7 +347,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	touch $(SYSROOT)/run/utmp
 	printf '/bin/sh\n' > $(SYSROOT)/etc/shells
 	mkdir -p $(SYSROOT)/run/user
-	chmod 755 $(SYSROOT)/run/user
+	sudo chmod 1777 $(SYSROOT)/run/user
 	printf 'KIRA_BASE_VERSION=%s\n' "$(KIRA_BASE_VERSION)" > $(SYSROOT)/etc/kira-release
 	printf 'live /lib/libc.so\nlive /bin/busybox\nlive /usr/bin/curl\nlive /etc/ssl/certs/ca-certificates.crt\nlive /usr/sbin/dhcpcd\nrestart:eudev /usr/sbin/udevd\nboot /sbin/runit\nboot /sbin/runit-init\nboot /sbin/sv\nboot /sbin/chpst\nboot /sbin/runsv\nboot /sbin/runsvdir\nboot /sbin/svlogd\nboot /etc/runit/1\nboot /etc/runit/2\nboot /etc/runit/3\n' > $(SYSROOT)/etc/kira-update-manifest
 
@@ -381,7 +382,7 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs | build/
 
 build/rootfs.tar.gz: build/stamps/sysroot.stamp | build/
 	@echo "[kira-base] packaging root filesystem..."
-	tar -czpf $@ --numeric-owner -C $(SYSROOT) .
+	sudo tar -czpf $@ --numeric-owner -C $(SYSROOT) .
 
 qemu: build/initramfs.cpio.gz
 	qemu-system-x86_64 \
