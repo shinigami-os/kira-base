@@ -17,6 +17,7 @@ fi
 mkdir -p /run/dbus
 mkdir -p /var/run/dbus
 mkdir -p /run/user
+chmod 1777 /run/user
 touch /run/utmp
 ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
 mkdir -p /dev/shm
