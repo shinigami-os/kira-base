@@ -350,6 +350,9 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	sudo chmod 1777 $(SYSROOT)/run/user
 	printf 'KIRA_BASE_VERSION=%s\n' "$(KIRA_BASE_VERSION)" > $(SYSROOT)/etc/kira-release
 	printf 'live /lib/libc.so\nlive /bin/busybox\nlive /usr/bin/curl\nlive /etc/ssl/certs/ca-certificates.crt\nlive /usr/sbin/dhcpcd\nrestart:eudev /usr/sbin/udevd\nboot /sbin/runit\nboot /sbin/runit-init\nboot /sbin/sv\nboot /sbin/chpst\nboot /sbin/runsv\nboot /sbin/runsvdir\nboot /sbin/svlogd\nboot /etc/runit/1\nboot /etc/runit/2\nboot /etc/runit/3\n' > $(SYSROOT)/etc/kira-update-manifest
+	for svc in $(notdir $(wildcard services/*)); do \
+		printf 'service /etc/sv/%s\n' "$$svc" >> $(SYSROOT)/etc/kira-update-manifest; \
+	done
 
 	touch $@
 
