@@ -14,12 +14,18 @@ mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
+# /var/run must be a symlink to /run (standard convention on every other
+# distro) - newer packages (e.g. glib 2.82+) hardcode /run/... as their
+# D-Bus system bus default and no longer fall back to /var/run at all,
+# while other things (dbus's own system.conf) still hardcode /var/run/...;
+# without the symlink these two conventions silently point at two
+# different, both-real directories and nothing can talk to anything else
+rm -rf /var/run
+ln -sf /run /var/run
 mkdir -p /run/dbus
-mkdir -p /var/run/dbus
 mkdir -p /run/user
 chmod 1777 /run/user
 touch /run/utmp
-ln -sf /run/utmp /var/run/utmp 2>/dev/null || true
 mkdir -p /dev/shm
 mount -t tmpfs tmpfs /dev/shm
 
