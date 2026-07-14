@@ -23,8 +23,11 @@ fi
 rm -rf /var/run
 ln -sf /run /var/run
 mkdir -p /run/dbus
+# elogind refuses to manage this dir (and thus refuses the whole session,
+# blocking login) unless it's exactly 0755 - it creates each user's own
+# 0700 subdirectory underneath itself, so 1777 here is unneeded anyway
 mkdir -p /run/user
-chmod 1777 /run/user
+chmod 0755 /run/user
 touch /run/utmp
 mkdir -p /dev/shm
 mount -t tmpfs tmpfs /dev/shm
