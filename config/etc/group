@@ -13,3 +13,4 @@ tape:x:26:
 kvm:x:36:
 sgx:x:39:
 wheel:x:998:
+netdev:x:997:
