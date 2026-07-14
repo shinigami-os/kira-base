@@ -335,7 +335,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
 	mkdir -p $(SYSROOT)/etc/pam.d
-	printf 'auth required pam_unix.so\naccount required pam_unix.so\n' > $(SYSROOT)/etc/pam.d/login
+	printf 'auth required pam_unix.so\naccount required pam_unix.so\nsession required pam_unix.so\nsession optional pam_elogind.so\n' > $(SYSROOT)/etc/pam.d/login
 	sudo chmod 644 $(SYSROOT)/etc/pam.d/login
 	sudo chown root:root $(SYSROOT)/etc/shadow
 	sudo chmod 640 $(SYSROOT)/etc/shadow
