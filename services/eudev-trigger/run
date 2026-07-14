@@ -5,6 +5,6 @@ until [ -S /run/udev/control ] || [ $i -ge 30 ]; do
     i=$((i + 1))
 done
 
-udevadm trigger
+udevadm trigger --action=add
 udevadm settle
 touch /etc/sv/eudev-trigger/down
