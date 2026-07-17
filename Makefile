@@ -132,7 +132,7 @@ build/sources/minisign-$(MINISIGN_V)/: build/sources/minisign-$(MINISIGN_V).tar.
 #! Compile
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 	cd $(<D) && \
-	./configure --prefix=$(SYSROOT)/usr --syslibdir=$(SYSROOT)/lib && \
+	./configure --prefix=$(SYSROOT)/usr --syslibdir=$(SYSROOT)/lib --enable-wrapper=gcc && \
 	make && \
 	make install
 	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/usr/lib/musl-gcc.specs
@@ -306,6 +306,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	chmod 1777 $(SYSROOT)/tmp
 	chmod 755 $(SYSROOT)/run
 	chmod 755 $(SYSROOT)/var/empty
+	ln -sf lib $(SYSROOT)/usr/lib64
 
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
