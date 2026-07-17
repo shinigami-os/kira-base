@@ -327,7 +327,12 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 		exit 1; \
 	fi; \
 	cp -Pf $$GCCRT_LIB/libgcc_s.so* $$GCCRT_LIB/libstdc++.so* $$GCCRT_LIB/libgomp.so* $$GCCRT_LIB/libatomic.so* $(SYSROOT)/usr/lib/
-	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
+	if [ -f /lib/ld-musl-x86_64.so.1 ]; then \
+		CLANG_CC="clang --target=x86_64-linux-musl"; \
+	else \
+		CLANG_CC="clang"; \
+	fi; \
+	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
