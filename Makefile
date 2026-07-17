@@ -313,19 +313,20 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	rm -f $(SYSROOT)/etc/sv/*/down
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
-	cp -Pf \
-		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so \
-		/opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so.1 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so \
-		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libstdc++.so.6.0.29 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so \
-		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so.1 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libgomp.so.1.0.0 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so \
-		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so.1 \
-		/opt/musl-cross/x86_64-linux-musl/lib/libatomic.so.1.2.0 \
-		$(SYSROOT)/usr/lib/
+	if [ -f /opt/musl-cross/x86_64-linux-musl/lib/libgcc_s.so ]; then \
+		GCCRT_LIB=/opt/musl-cross/x86_64-linux-musl/lib; \
+	elif [ -f /lib/ld-musl-x86_64.so.1 ]; then \
+		GCCRT_LIB=/usr/lib; \
+	else \
+		echo "ERROR: no musl-cross-make toolchain at /opt/musl-cross, and this" >&2; \
+		echo "        isn't a musl host either (no /lib/ld-musl-x86_64.so.1)." >&2; \
+		echo "        Refusing to guess a libgcc_s/libstdc++ source, since" >&2; \
+		echo "        picking the glibc one by mistake silently contaminates" >&2; \
+		echo "        the sysroot (breaks EGL/Mesa at runtime, see kira-base" >&2; \
+		echo "        README's glibc-contamination note)." >&2; \
+		exit 1; \
+	fi; \
+	cp -Pf $$GCCRT_LIB/libgcc_s.so* $$GCCRT_LIB/libstdc++.so* $$GCCRT_LIB/libgomp.so* $$GCCRT_LIB/libatomic.so* $(SYSROOT)/usr/lib/
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
