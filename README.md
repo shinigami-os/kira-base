@@ -29,7 +29,7 @@ kira-base follows a strict **core vs flux-managed** boundary:
 | Device management | eudev | 3.2.14 |
 | DHCP | dhcpcd | 10.3.2 (binary only : service via kira-net) |
 | TLS | LibreSSL | 4.3.1 |
-| Package manager | flux | 26.06 |
+| Package manager | flux | 26.07 |
 
 ## Build
 
@@ -103,7 +103,6 @@ Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix relea
 
 **Updating an installed system: `flux base-update`.** Unlike flux (a single binary, atomically replaceable) kira-base ships musl, BusyBox, and runit : things every running process and PID 1 itself depend on continuously, so it can't rebuild itself from source on an installed system (no cross-toolchain or kernel tree there) or hot-swap its core the way flux hot-swaps its own binary. Instead:
 - `make` here produces `build/rootfs.tar.gz` (the full sysroot) and `build/initramfs.cpio.gz`.
-- `scripts/push-base-release.sh <version>` signs both with minisign and pushes them to `cache.oxoghost.dev` alongside the package cache.
 - `sysroot.stamp` also writes `/etc/kira-update-manifest` into the sysroot, classifying every core file as `live` (safe to replace immediately : musl, BusyBox, curl, the CA bundle, the bootstrap `dhcpcd`), `restart:<service>` (replaced then that service restarted; e.g. `eudev`), or `boot` (replaced on disk but only takes effect next reboot : `runit-init`/`runsvdir`/`runsv`/`sv`/`chpst`/`svlogd`, the `runit/1,2,3` stage scripts, since they're already running and a file replace doesn't change what's in memory).
 - On an installed Kira system, `flux update` checks `kira-base`'s tags against `/etc/kira-release` and tells you to run `flux base-update` if there's a newer one (never runs it automatically). `flux base-update` downloads, verifies, and applies the manifest, including the new initramfs, then reports whether a reboot is needed.
 
