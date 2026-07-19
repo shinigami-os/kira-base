@@ -10,14 +10,15 @@ kira-base follows a strict **core vs flux-managed** boundary:
 **Core (this repo : never flux-managed):**
 - musl libc, BusyBox (static), runit, flux, eudev, dhcpcd binary, curl (static) + CA bundle
 - Minimal `runit/1`/`runit/2` stage scripts
-- Core runit services: eudev, getty-tty1, udev-input-trigger, i915 (oneshot), syslog, console
+- Core runit services: eudev, eudev-trigger, udev-input-trigger, getty-tty1, syslog, console
 
 **Flux-managed (installed by kira-installer, not this repo):**
 - Shell: `zsh`, `zsh-plugins`, `kira-branding`
-- Seat/login: `kira-seat`, `kira-login`
+- Seat/login (server tier): `kira-seat`, `kira-login`
+- Login manager (desktop tier): `greetd` + `cage` + `regreet` + `accountsservice`
 - Networking: `kira-net`
 - Session bus: `kira-session-bus`
-- Desktop: `kira-desktop-swayFX`
+- Desktop: `kira-desktop-swayFX`, `kira-desktop-sleex`
 
 ## Stack
 
@@ -29,7 +30,7 @@ kira-base follows a strict **core vs flux-managed** boundary:
 | Device management | eudev | 3.2.14 |
 | DHCP | dhcpcd | 10.3.2 (binary only : service via kira-net) |
 | TLS | LibreSSL | 4.3.1 |
-| Package manager | flux | 26.07 |
+| Package manager | flux | cloned fresh from the `flux` repo's default branch at build time, always the latest commit |
 
 ## Build
 
@@ -67,10 +68,10 @@ kira-base/
   services/             core runit service directories (/etc/sv/)
     console/            serial console
     eudev/              device management
-    getty-tty1/         tty1 login -> zsh-login -> sway autostart (on desktop tier)
-    i915/               oneshot: modprobe i915 (desktop tier only, checks /etc/kira-tier)
-    syslog/             system logging
+    eudev-trigger/      oneshot: udevadm trigger --action=add + settle (coldplug at boot)
     udev-input-trigger/ oneshot: sets ID_INPUT_* properties via udevadm test
+    getty-tty1/         baseline tty1 login (server tier; desktop tier disables this via greetd's post-install)
+    syslog/             system logging
   config/
     etc/
       flux/             flux default config and public key
@@ -86,20 +87,23 @@ kernel → runit-init (PID 1)
   └── stage 1: mount proc/sys/dev/shm, set hostname, loopback, flux-bootstrap
   └── stage 2: runsvdir /etc/sv
        ├── eudev               device management
-       ├── i915                modprobe i915 (desktop tier only)
+       ├── eudev-trigger       udevadm trigger --action=add + settle (oneshot, coldplug)
        ├── udev-input-trigger  set ID_INPUT_* on input devices (oneshot)
-       ├── getty-tty1          -> zsh-login -> kira-start-swayFX (desktop) or /bin/sh (server)
-       └── [flux-managed services installed by kira-installer]
+       ├── getty-tty1          baseline tty1 login (disabled by greetd on desktop tier)
+       └── [flux-managed services installed by kira-installer: greetd, dbus, polkitd,
+            NetworkManager, elogind, seatd, etc.]
   └── stage 3: shutdown cleanup
 ```
 
+Historical note: an earlier revision shipped a dedicated `i915` oneshot service to work around the Intel graphics driver not loading at boot. The real cause was `udevadm trigger` defaulting to `--action=change` (which never fires kmod-load rules); fixing that in `eudev-trigger` (now using `--action=add`) made the dedicated service redundant, and it was removed.
+
 ## Tier detection
 
-`/etc/kira-tier` contains either `server` or `desktop`, written by `kira-installer` at install time (and written into the live ISO environment by `kira-installer`'s Makefile). Core services that behave differently per tier (currently only `i915`) read this file directly — no build-time branching.
+`/etc/kira-tier` contains `server`, `desktop-sleex`, or `desktop-swayfx` on an installed system (an earlier coarse `server`/`desktop` value is written into the live ISO by `kira-installer`'s Makefile, then refined during the guided install). No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by `kira-installer` (e.g. whether `greetd` and a DE package get installed at all).
 
 ## Versioning
 
-Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (`26.06`, then `26.06-1`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.06`). 
+Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (e.g. current: `26.07-4`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.07-4`).
 
 **Updating an installed system: `flux base-update`.** Unlike flux (a single binary, atomically replaceable) kira-base ships musl, BusyBox, and runit : things every running process and PID 1 itself depend on continuously, so it can't rebuild itself from source on an installed system (no cross-toolchain or kernel tree there) or hot-swap its core the way flux hot-swaps its own binary. Instead:
 - `make` here produces `build/rootfs.tar.gz` (the full sysroot) and `build/initramfs.cpio.gz`.
