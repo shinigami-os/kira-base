@@ -2,7 +2,7 @@ SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 # release-based, matches flux's scheme: YY.MM, optionally -N for a hotfix. Tag the repo with the same string.
-KIRA_BASE_VERSION = 26.07-4
+KIRA_BASE_VERSION = 26.07-5
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -145,7 +145,12 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 	cd $(<D) && \
 	make CC=$(MUSL_CC) && \
 	make install CC=$(MUSL_CC) CONFIG_PREFIX=$(SYSROOT)
-	
+	for cmd in reboot poweroff halt; do \
+		rm -f $(SYSROOT)/sbin/$$cmd; \
+		printf '#!/bin/sh\nexec /bin/busybox %s -f "$$@"\n' "$$cmd" > $(SYSROOT)/sbin/$$cmd; \
+		chmod 755 $(SYSROOT)/sbin/$$cmd; \
+	done
+
 	touch $@
 
 build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
