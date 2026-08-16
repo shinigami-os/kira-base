@@ -14,18 +14,11 @@ mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
-# /var/run must be a symlink to /run (standard convention on every other
-# distro) - newer packages (e.g. glib 2.82+) hardcode /run/... as their
-# D-Bus system bus default and no longer fall back to /var/run at all,
-# while other things (dbus's own system.conf) still hardcode /var/run/...;
-# without the symlink these two conventions silently point at two
-# different, both-real directories and nothing can talk to anything else
+# /var/run must be a symlink to /run: some packages hardcode one path, others the other, and without the symlink they silently can't talk to each other
 rm -rf /var/run
 ln -sf /run /var/run
 mkdir -p /run/dbus
-# elogind refuses to manage this dir (and thus refuses the whole session,
-# blocking login) unless it's exactly 0755 - it creates each user's own
-# 0700 subdirectory underneath itself, so 1777 here is unneeded anyway
+# elogind refuses to manage this dir (blocking login) unless it's exactly 0755; it makes each user's own 0700 subdir underneath, so 1777 here is unneeded
 mkdir -p /run/user
 chmod 0755 /run/user
 touch /run/utmp
@@ -46,10 +39,8 @@ export SVDIR=/etc/sv
 echo "[stage 1] bringing up loopback..."
 ip link set lo up
 
-# Register sysroot packages in flux database on first boot
 /usr/bin/flux-bootstrap.sh
 
-# Load AZERTY keymap
 loadkmap < /etc/keymaps/fr-azerty.bmap || true
 
 echo "[stage 1] done"

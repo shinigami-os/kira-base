@@ -1,23 +1,22 @@
 #!/bin/sh
-# Initramfs pre-stage 1: mount real root and switch_root into it.
-# Keeps nothing : this entire environment is discarded after switch_root.
-# PATH is intentionally NOT exported: it's only needed for this script's
-# own command lookups (mount/switch_root/etc live in /sbin here), and
-# must not leak through switch_root into the real system's environment,
-# where utilities like setsid live in /usr/bin : a wider PATH there is
-# the real system's job to set, not this throwaway initramfs's.
+# PATH is intentionally not exported: needed only for this script's own command lookups, and must not leak through switch_root into the real system's environment
 PATH=/bin:/sbin
+
+# PID 1 exiting panics the kernel, and plain /bin/sh can hit EOF and exit on its own, so route every rescue path through this instead
+rescue_shell() {
+    /bin/sh
+    while true; do sleep 3600; done
+}
 
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 
-# Parse root= from kernel cmdline
 ROOT=$(cat /proc/cmdline | tr ' ' '\n' | grep '^root=' | cut -d= -f2-)
 
 if [ -z "$ROOT" ]; then
     echo "[initramfs] ERROR: no root= in cmdline"
-    exec /bin/sh
+    rescue_shell
 fi
 
 mkdir -p /newroot
@@ -56,7 +55,7 @@ if [ "$ROOT" = "live" ]; then
             i=$((i + 1))
             if [ $i -ge 30 ]; then
                 echo "[initramfs] ERROR: live-rootfs.tar.gz not found on any iso9660 media after 30s"
-                exec /bin/sh
+                rescue_shell
             fi
             sleep 1
         fi
@@ -69,14 +68,13 @@ if [ "$ROOT" = "live" ]; then
     exec switch_root /newroot /sbin/runit-init
 fi
 
-# Installed-disk boot: wait for the root device and mount it read-only
-# (real runit/1 on disk handles the rw remount later)
+# Mounted read-only here; the real runit/1 on disk handles the rw remount later
 i=0
 until mount -o ro "$ROOT" /newroot 2>/dev/null; do
     i=$((i + 1))
     if [ $i -ge 30 ]; then
         echo "[initramfs] ERROR: failed to mount root=$ROOT after 30s"
-        exec /bin/sh
+        rescue_shell
     fi
     sleep 1
 done

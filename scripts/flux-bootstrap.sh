@@ -1,7 +1,4 @@
 #!/bin/sh
-# flux-bootstrap.sh - Register sysroot packages in flux database on first boot
-# Idempotent: skips packages already registered.
-
 FLUX_DB=/var/lib/flux/installed
 DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -22,7 +19,6 @@ EOF
     touch "$dir/files"
 }
 
-# Core system
 register musl          1.2.6
 register busybox       1.37.0
 register runit         2.3.1

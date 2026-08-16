@@ -1,8 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-# release-based, matches flux's scheme: YY.MM, optionally -N for a hotfix. Tag the repo with the same string.
-KIRA_BASE_VERSION = 26.07-5
+KIRA_BASE_VERSION = 26.08
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.37.0
@@ -16,7 +15,6 @@ ZSTD_V = 1.5.7
 MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.20
 CA_CERTIFICATES_V = 2026-05-14
-# you need to clone shinigami first (clone it in the parent directory of this Makefile), from https://github.com/shinigami-os/shinigami
 SHINIGAMI = $(CURDIR)/../shinigami
 
 MUSL_CC = $(SYSROOT)/usr/bin/musl-gcc
