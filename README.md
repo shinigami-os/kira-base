@@ -103,7 +103,7 @@ Historical note: an earlier revision shipped a dedicated `i915` oneshot service 
 
 ## Versioning
 
-Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (e.g. current: `26.07-4`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.07-4`).
+Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (e.g. current: `26.08`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.08`).
 
 **Updating an installed system: `flux base-update`.** Unlike flux (a single binary, atomically replaceable) kira-base ships musl, BusyBox, and runit : things every running process and PID 1 itself depend on continuously, so it can't rebuild itself from source on an installed system (no cross-toolchain or kernel tree there) or hot-swap its core the way flux hot-swaps its own binary. Instead:
 - `make` here produces `build/rootfs.tar.gz` (the full sysroot) and `build/initramfs.cpio.gz`.
