@@ -1,4 +1,6 @@
 #!/bin/sh
+# musl's execvp() fallback has no /sbin, and nothing set PATH before this - elogind's reboot/poweroff calls need it
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 rm -f /etc/sv/udev-input-trigger/down /etc/sv/eudev-trigger/down
 echo "[stage 2] starting service supervision..."
 exec runsvdir /etc/sv
