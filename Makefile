@@ -1,19 +1,19 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08
+KIRA_BASE_VERSION = 26.08-1
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
-BUSYBOX_V = 1.37.0
+BUSYBOX_V = 1.38.0
 RUNIT_V = 2.3.1
 EUDEV_V = 3.2.14
-DHCPCD_V = 10.3.2
+DHCPCD_V = 10.5.2
 ZLIB_V = 1.3.2
-LIBRESSL_V = 4.3.1
-CURL_V = 8.20.0
+LIBRESSL_V = 4.3.2
+CURL_V = 8.21.0
 ZSTD_V = 1.5.7
 MINISIGN_V = 0.12
-LIBSODIUM_V = 1.0.20
+LIBSODIUM_V = 1.0.22
 CA_CERTIFICATES_V = 2026-05-14
 SHINIGAMI = $(CURDIR)/../shinigami
 
