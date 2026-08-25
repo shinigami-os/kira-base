@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08-1
+KIRA_BASE_VERSION = 26.08-3
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -72,6 +72,13 @@ build/sources/libressl-$(LIBRESSL_V).tar.gz: | build/sources/
 
 build/sources/flux/: | build/sources/
 	git clone --depth=1 https://github.com/shinigami-os/flux $@
+
+build/sources/intel-ucode/: | build/sources/
+	git clone --depth=1 https://github.com/intel/Intel-Linux-Processor-Microcode-Data-Files $@
+
+build/sources/amd-ucode/: | build/sources/
+	git clone --filter=blob:none --no-checkout --depth=1 https://gitlab.com/kernel-firmware/linux-firmware.git $@
+	cd $@ && git sparse-checkout init --cone && git sparse-checkout set amd-ucode && git checkout
 
 build/sources/curl-$(CURL_V).tar.gz: | build/sources/
 	wget -O $@ https://curl.se/download/curl-$(CURL_V).tar.gz
@@ -371,7 +378,14 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	touch $@
 
 #! Targets
-build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs | build/
+build/microcode.cpio: build/sources/intel-ucode/ build/sources/amd-ucode/ | build/
+	rm -rf build/microcode-root
+	mkdir -p build/microcode-root/kernel/x86/microcode
+	cat build/sources/intel-ucode/intel-ucode/* > build/microcode-root/kernel/x86/microcode/GenuineIntel.bin
+	cat build/sources/amd-ucode/amd-ucode/microcode_amd*.bin > build/microcode-root/kernel/x86/microcode/AuthenticAMD.bin
+	cd build/microcode-root && find . | cpio -oH newc --owner root:root > $(CURDIR)/build/microcode.cpio
+
+build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/microcode.cpio | build/
 	rm -rf $(INITRAMFS_ROOT)
 	mkdir -p $(INITRAMFS_ROOT)/bin \
 			$(INITRAMFS_ROOT)/sbin \
@@ -391,7 +405,9 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs | build/
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/switch_root
 	cp runit/1-initramfs $(INITRAMFS_ROOT)/init
 	chmod +x $(INITRAMFS_ROOT)/init
-	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip > ../initramfs.cpio.gz
+	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs-main.cpio.gz
+	cat build/microcode.cpio build/initramfs-main.cpio.gz > build/initramfs.cpio.gz
+	rm -f build/initramfs-main.cpio.gz
 
 build/rootfs.tar.gz: build/stamps/sysroot.stamp | build/
 	@echo "[kira-base] packaging root filesystem..."
