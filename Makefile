@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08-2
+KIRA_BASE_VERSION = 26.08-3
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -377,7 +377,6 @@ build/stamps/kernel-headers.stamp: | build/stamps/
 	make -j$(nproc) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)/usr
 	touch $@
 
-#! Targets
 build/microcode.cpio: build/sources/intel-ucode/ build/sources/amd-ucode/ | build/
 	rm -rf build/microcode-root
 	mkdir -p build/microcode-root/kernel/x86/microcode
@@ -397,7 +396,7 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	mkdir -p $(INITRAMFS_ROOT)/cdrom
 	cp $(SYSROOT)/lib/ld-musl-x86_64.so.1 $(INITRAMFS_ROOT)/lib/
 	cp $(SYSROOT)/bin/busybox $(INITRAMFS_ROOT)/bin/busybox
-	for cmd in sh cat grep tr cut sleep mkdir basename tar; do \
+	for cmd in sh cat grep tr cut sleep mkdir basename tar ls; do \
 		ln -sf busybox $(INITRAMFS_ROOT)/bin/$$cmd; \
 	done
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/mount

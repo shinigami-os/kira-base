@@ -8,6 +8,17 @@ rescue_shell() {
     while true; do sleep 3600; done
 }
 
+boot_root() {
+    echo "[initramfs] preflight: /sbin/runit-init at $ROOT"
+    ls -la /newroot/sbin/runit-init
+    mount | grep newroot
+    /newroot/sbin/runit-init
+    echo "[initramfs] preflight exec rc=$?"
+    exec switch_root /newroot /sbin/runit-init
+    echo "[initramfs] ERROR: switch_root itself failed to start"
+    rescue_shell
+}
+
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
@@ -65,7 +76,7 @@ if [ "$ROOT" = "live" ]; then
     tar -xzpf /cdrom/live-rootfs.tar.gz -C /newroot
     umount /cdrom
 
-    exec switch_root /newroot /sbin/runit-init
+    boot_root
 fi
 
 # Mounted read-only here; the real runit/1 on disk handles the rw remount later
@@ -79,4 +90,4 @@ until mount -o ro "$ROOT" /newroot 2>/dev/null; do
     sleep 1
 done
 
-exec switch_root /newroot /sbin/runit-init
+boot_root
