@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08-3
+KIRA_BASE_VERSION = 26.08-4
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -24,7 +24,7 @@ DOWNLOADS = \
 	build/sources/busybox-$(BUSYBOX_V).tar.bz2 \
 	build/sources/runit-$(RUNIT_V).tar.gz
 
-SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
+SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log var/tmp home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
 all: build/initramfs.cpio.gz build/rootfs.tar.gz
@@ -314,6 +314,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
+	chmod 1777 $(SYSROOT)/var/tmp
 	chmod 755 $(SYSROOT)/run
 	chmod 755 $(SYSROOT)/var/empty
 	ln -sf lib $(SYSROOT)/usr/lib64
