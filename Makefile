@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08-3
+KIRA_BASE_VERSION = 26.08-2
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
