@@ -50,25 +50,25 @@ build/sysroot/:
 
 #! Downloads
 build/sources/musl-$(MUSL_V).tar.gz: | build/sources/
-	wget -O $@ https://musl.libc.org/releases/musl-$(MUSL_V).tar.gz
+	curl -fL -o $@ https://github.com/kraj/musl/archive/refs/tags/v$(MUSL_V).tar.gz
 
 build/sources/runit-$(RUNIT_V).tar.gz: | build/sources/
-	wget -O $@ http://smarden.org/runit/runit-$(RUNIT_V).tar.gz
+	curl -fL -o $@ http://smarden.org/runit/runit-$(RUNIT_V).tar.gz
 
 build/sources/busybox-$(BUSYBOX_V).tar.bz2: | build/sources/
-	wget -O $@ https://busybox.net/downloads/busybox-$(BUSYBOX_V).tar.bz2
+	curl -fL -o $@ https://busybox.net/downloads/busybox-$(BUSYBOX_V).tar.bz2
 
 build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
-	wget -O $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
+	curl -fL -o $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
 
 build/sources/dhcpcd-$(DHCPCD_V).tar.xz: | build/sources/
-	wget -O $@ https://github.com/NetworkConfiguration/dhcpcd/releases/download/v$(DHCPCD_V)/dhcpcd-$(DHCPCD_V).tar.xz
+	curl -fL -o $@ https://github.com/NetworkConfiguration/dhcpcd/releases/download/v$(DHCPCD_V)/dhcpcd-$(DHCPCD_V).tar.xz
 
 build/sources/zlib-$(ZLIB_V).tar.gz: | build/sources/
-	wget -O $@ https://github.com/madler/zlib/releases/download/v$(ZLIB_V)/zlib-$(ZLIB_V).tar.gz
+	curl -fL -o $@ https://github.com/madler/zlib/releases/download/v$(ZLIB_V)/zlib-$(ZLIB_V).tar.gz
 
 build/sources/libressl-$(LIBRESSL_V).tar.gz: | build/sources/
-	wget -O $@ https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$(LIBRESSL_V).tar.gz
+	curl -fL -o $@ https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$(LIBRESSL_V).tar.gz
 
 build/sources/flux/: | build/sources/
 	git clone --depth=1 https://github.com/shinigami-os/flux $@
@@ -81,19 +81,19 @@ build/sources/amd-ucode/: | build/sources/
 	cd $@ && git sparse-checkout init --cone && git sparse-checkout set amd-ucode && git checkout
 
 build/sources/curl-$(CURL_V).tar.gz: | build/sources/
-	wget -O $@ https://curl.se/download/curl-$(CURL_V).tar.gz
+	curl -fL -o $@ https://curl.se/download/curl-$(CURL_V).tar.gz
 
 build/sources/zstd-$(ZSTD_V).tar.gz: | build/sources/
-	wget -O $@ https://github.com/facebook/zstd/releases/download/v$(ZSTD_V)/zstd-$(ZSTD_V).tar.gz
+	curl -fL -o $@ https://github.com/facebook/zstd/releases/download/v$(ZSTD_V)/zstd-$(ZSTD_V).tar.gz
 
 build/sources/libsodium-$(LIBSODIUM_V).tar.gz: | build/sources/
-	wget -O $@ https://download.libsodium.org/libsodium/releases/libsodium-$(LIBSODIUM_V).tar.gz
+	curl -fL -o $@ https://download.libsodium.org/libsodium/releases/libsodium-$(LIBSODIUM_V).tar.gz
 
 build/sources/minisign-$(MINISIGN_V).tar.gz: | build/sources/
-	wget -O $@ https://github.com/jedisct1/minisign/archive/refs/tags/$(MINISIGN_V).tar.gz
+	curl -fL -o $@ https://github.com/jedisct1/minisign/archive/refs/tags/$(MINISIGN_V).tar.gz
 
 build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem: | build/sources/
-	wget -O $@ https://curl.se/ca/cacert-$(CA_CERTIFICATES_V).pem
+	curl -fL -o $@ https://curl.se/ca/cacert-$(CA_CERTIFICATES_V).pem
 
 
 
