@@ -43,4 +43,7 @@ ip link set lo up
 
 loadkmap < /etc/keymaps/fr-azerty.bmap || true
 
+# not hardware-triggered like most modules, so bluetoothd needs it modprobed explicitly
+modprobe uhid || true
+
 echo "[stage 1] done"
