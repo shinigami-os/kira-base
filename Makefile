@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.08-4
+KIRA_BASE_VERSION = 26.09
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -288,6 +288,7 @@ build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stam
 build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/musl.stamp | build/stamps/
 	mkdir -p $(<D)/build
 	cd $(<D)/build && cmake \
+		-DCMAKE_MAKE_PROGRAM=make \
 		-DCMAKE_C_COMPILER=$(MUSL_CC) \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_BUILD_TYPE=Release \
