@@ -309,6 +309,8 @@ build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/musl.stamp |
 build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/stamps/
 	make -j$(nproc) CC=$(MUSL_CC) -C $(<D)
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
+	mkdir -p $(SYSROOT)/etc/flux/alpine-keys
+	install -m 644 $(<D)/keys/alpine/*.rsa.pub $(SYSROOT)/etc/flux/alpine-keys/
 	touch $@
 
 build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
