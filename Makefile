@@ -56,7 +56,7 @@ build/sources/runit-$(RUNIT_V).tar.gz: | build/sources/
 	curl -fL -o $@ http://smarden.org/runit/runit-$(RUNIT_V).tar.gz
 
 build/sources/busybox-$(BUSYBOX_V).tar.bz2: | build/sources/
-	curl -fL -o $@ https://busybox.net/downloads/busybox-$(BUSYBOX_V).tar.bz2
+	curl -fL -o $@ https://sources.buildroot.net/busybox/busybox-$(BUSYBOX_V).tar.bz2
 
 build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
 	curl -fL -o $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
