@@ -181,7 +181,7 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		--host=x86_64-linux-musl \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--with-rootrundir=/run/udev \
+		--with-rootrundir=/run \
 		--disable-manpages \
 		--disable-hwdb \
 		--disable-blkid \
@@ -314,7 +314,7 @@ build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/sta
 	install -m 644 $(<D)/keys/alpine/*.rsa.pub $(SYSROOT)/etc/flux/alpine-keys/
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) | build/sysroot/
+build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) $(wildcard services/*) $(wildcard services/**/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -407,6 +407,19 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/mount
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/umount
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/switch_root
+	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/modprobe
+	# storage controllers (ahci, virtio-blk) and the CD-ROM translation layer are built as
+	# modules, and this minimal init has no udev/kmod autoload - without these, the live-boot
+	# device scan below can never see a SATA/AHCI or virtio disk, only whatever's built in (NVMe)
+	mkdir -p $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)
+	cp $(SYSROOT)/lib/modules/$(KERNEL_VERSION)/modules.dep $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/
+	for mod in kernel/drivers/ata/libahci.ko kernel/drivers/ata/ahci.ko \
+	           kernel/drivers/cdrom/cdrom.ko kernel/drivers/scsi/sr_mod.ko \
+	           kernel/drivers/virtio/virtio_pci_legacy_dev.ko kernel/drivers/virtio/virtio_pci_modern_dev.ko \
+	           kernel/drivers/virtio/virtio_pci.ko kernel/drivers/block/virtio_blk.ko; do \
+		mkdir -p $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/$$(dirname $$mod); \
+		cp $(SYSROOT)/lib/modules/$(KERNEL_VERSION)/$$mod $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/$$mod; \
+	done
 	cp runit/1-initramfs $(INITRAMFS_ROOT)/init
 	chmod +x $(INITRAMFS_ROOT)/init
 	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs-main.cpio.gz
