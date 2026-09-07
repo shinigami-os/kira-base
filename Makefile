@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.09
+KIRA_BASE_VERSION = 26.09-1
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -141,7 +141,8 @@ build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 	make && \
 	make install
 	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/usr/lib/musl-gcc.specs
-	ln -sf ../usr/lib/libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
+	mv $(SYSROOT)/usr/lib/libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
+	ln -sf ../../lib/ld-musl-x86_64.so.1 $(SYSROOT)/usr/lib/libc.so
 
 	touch $@
 
