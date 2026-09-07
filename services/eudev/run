@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec /usr/bin/udevd
+exec /usr/sbin/udevd
