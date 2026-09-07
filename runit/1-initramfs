@@ -23,6 +23,12 @@ mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 
+# storage controllers are built as modules and there's no udev/kmod autoload this early -
+# without these, only whatever's built directly into the kernel (NVMe) would ever show up
+for mod in libahci ahci cdrom sr_mod virtio_pci_legacy_dev virtio_pci_modern_dev virtio_pci virtio_blk; do
+    modprobe "$mod" 2>/dev/null || true
+done
+
 ROOT=$(cat /proc/cmdline | tr ' ' '\n' | grep '^root=' | cut -d= -f2-)
 
 if [ -z "$ROOT" ]; then
