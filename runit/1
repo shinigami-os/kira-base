@@ -51,10 +51,8 @@ modprobe uhid || true
 # just relies on a driver already being bound. Load the common keyboard/NIC
 # drivers explicitly so both actually work without depending on which ones
 # happen to be built statically into the kernel.
-for mod in i8042 atkbd serio_raw hid_generic usbhid virtio_net e1000 e1000e igb r8169; do
+for mod in i8042 atkbd serio_raw hid_generic usbhid virtio_net e1000 e1000e igb r8169 i915 amdgpu nouveau radeon; do
     modprobe "$mod" 2>/dev/null || true
 done
-echo "[stage 1] DEBUG lsmod: $(lsmod | tr '\n' ',')"
-echo "[stage 1] DEBUG ip link: $(ip link 2>&1 | tr '\n' ',')"
 
 echo "[stage 1] done"
