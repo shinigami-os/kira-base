@@ -1,12 +1,13 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.09-3
+KIRA_BASE_VERSION = 26.09-4
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
 RUNIT_V = 2.3.1
 EUDEV_V = 3.2.14
+KMOD_V = 34.2
 DHCPCD_V = 10.5.2
 ZLIB_V = 1.3.2
 LIBRESSL_V = 4.3.2
@@ -61,6 +62,9 @@ build/sources/busybox-$(BUSYBOX_V).tar.bz2: | build/sources/
 build/sources/eudev-$(EUDEV_V).tar.gz: | build/sources/
 	curl -fL -o $@ https://github.com/eudev-project/eudev/releases/download/v$(EUDEV_V)/eudev-$(EUDEV_V).tar.gz
 
+build/sources/kmod-$(KMOD_V).tar.xz: | build/sources/
+	curl -fL -o $@ https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-$(KMOD_V).tar.xz
+
 build/sources/dhcpcd-$(DHCPCD_V).tar.xz: | build/sources/
 	curl -fL -o $@ https://github.com/NetworkConfiguration/dhcpcd/releases/download/v$(DHCPCD_V)/dhcpcd-$(DHCPCD_V).tar.xz
 
@@ -111,6 +115,9 @@ build/sources/runit-$(RUNIT_V)/: build/sources/runit-$(RUNIT_V).tar.gz
 
 build/sources/eudev-$(EUDEV_V)/: build/sources/eudev-$(EUDEV_V).tar.gz
 	tar xzf $< -C build/sources
+
+build/sources/kmod-$(KMOD_V)/: build/sources/kmod-$(KMOD_V).tar.xz
+	tar xJf $< -C build/sources
 
 build/sources/dhcpcd-$(DHCPCD_V)/: build/sources/dhcpcd-$(DHCPCD_V).tar.xz
 	tar xJf $< -C build/sources
@@ -175,8 +182,34 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	
 	touch $@
 
-build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stamp | build/stamps/
+build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/musl.stamp | build/stamps/
 	cd $(<D) && \
+	./configure \
+		--host=x86_64-linux-musl \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--disable-tools \
+		--disable-manpages \
+		--without-zstd \
+		--without-xz \
+		--without-zlib \
+		--without-openssl \
+		CC=$(MUSL_CC) \
+		CFLAGS="-I$(SYSROOT)/usr/include" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
+	make -j$(nproc) && \
+	make install DESTDIR=$(SYSROOT)
+
+	touch $@
+
+# eudev's own modules never actually get autoloaded without this - see runit/1's
+# comment for the fallout when it's missing (an explicit modprobe list to work
+# around every device that used to silently never get a driver)
+build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stamp build/stamps/kmod.stamp | build/stamps/
+	cd $(<D) && \
+	PKG_CONFIG_PATH="$(SYSROOT)/usr/lib/pkgconfig" \
+	PKG_CONFIG_LIBDIR="$(SYSROOT)/usr/lib/pkgconfig" \
+	PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	./configure \
 		--host=x86_64-linux-musl \
 		--prefix=/usr \
@@ -186,7 +219,7 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		--disable-hwdb \
 		--disable-blkid \
 		--disable-selinux \
-		--disable-kmod \
+		--enable-kmod \
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \

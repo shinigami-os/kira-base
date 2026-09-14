@@ -28,6 +28,7 @@ kira-base follows a strict **core vs flux-managed** boundary:
 | Init | runit | 2.3.1 |
 | Userland | BusyBox (static) | 1.37.0 |
 | Device management | eudev | 3.2.14 |
+| Module autoload | kmod (libkmod only, built for eudev) | 34.2 |
 | DHCP | dhcpcd | 10.3.2 (binary only : service via kira-net) |
 | TLS | LibreSSL | 4.3.1 |
 | Package manager | flux | cloned fresh from the `flux` repo's default branch at build time, always the latest commit |
@@ -95,7 +96,7 @@ kernel → runit-init (PID 1)
   └── stage 3: shutdown cleanup
 ```
 
-Historical note: an earlier revision shipped a dedicated `i915` oneshot service to work around the Intel graphics driver not loading at boot. The real cause was `udevadm trigger` defaulting to `--action=change` (which never fires kmod-load rules); fixing that in `eudev-trigger` (now using `--action=add`) made the dedicated service redundant, and it was removed.
+Historical note: an earlier revision shipped a dedicated `i915` oneshot service to work around the Intel graphics driver not loading at boot. The real cause was `udevadm trigger` defaulting to `--action=change` (which never fires kmod-load rules); fixing that in `eudev-trigger` (now using `--action=add`) made the dedicated service redundant, and it was removed. That alone wasn't the whole story though: eudev was still being built with `--disable-kmod` (no libkmod in the cross sysroot), so it had no kmod-load rule to fire regardless of trigger action. `runit/1`'s explicit `modprobe` list for keyboard/NIC/GPU/wifi/bluetooth drivers was the interim workaround for that. eudev now builds libkmod itself first and links against it (`--enable-kmod`), so coldplugged hardware gets a real driver automatically; the explicit list stays as a safety net for now rather than being removed sight unseen.
 
 ## Tier detection
 
