@@ -27,13 +27,13 @@ DOWNLOADS = \
 SYSROOT_BASE = proc sys dev dev/pts etc etc/runit etc/sv bin sbin usr usr/bin usr/lib usr/include lib var var/run var/log var/tmp home root tmp run run/udev lib/udev var/lib/dhcpcd usr/sbin var/empty etc/ssh etc/skel etc/flux var/lib/flux var/lib/flux/installed var/cache/flux etc/ssl/certs var/lib/polkit-1 run/dbus var/run/dbus run/user dev/shm
 .PHONY: all clean build sysroot sources initramfs qemu soft-clean
 
-all: build/initramfs.cpio.gz build/rootfs.tar.gz
+all: build/initramfs.cpio.gz build/rootfs.tar.xz
 
 clean:
 	sudo rm -rf build
 
 soft-clean:
-	rm -rf build/stamps build/initramfs.cpio.gz build/initramfs-root build/rootfs.tar.gz
+	rm -rf build/stamps build/initramfs.cpio.gz build/initramfs-root build/rootfs.tar.xz
 	sudo rm -rf $(SYSROOT)
 
 #! Directories
@@ -422,15 +422,15 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	done
 	cp runit/1-initramfs $(INITRAMFS_ROOT)/init
 	chmod +x $(INITRAMFS_ROOT)/init
-	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip > $(CURDIR)/build/initramfs-main.cpio.gz
+	cd $(INITRAMFS_ROOT) && find . | cpio -oH newc --owner root:root | gzip -9 > $(CURDIR)/build/initramfs-main.cpio.gz
 	cat build/microcode.cpio build/initramfs-main.cpio.gz > build/initramfs.cpio.gz
 	rm -f build/initramfs-main.cpio.gz
 
-build/rootfs.tar.gz: build/stamps/sysroot.stamp | build/
+build/rootfs.tar.xz: build/stamps/sysroot.stamp | build/
 	@echo "[kira-base] packaging root filesystem..."
 	sudo chown root:root $(SYSROOT)
 	sudo chmod 755 $(SYSROOT)
-	sudo tar -czpf $@ --numeric-owner -C $(SYSROOT) .
+	sudo tar -cJpf $@ --numeric-owner -C $(SYSROOT) .
 
 qemu: build/initramfs.cpio.gz
 	qemu-system-x86_64 \

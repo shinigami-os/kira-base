@@ -49,7 +49,7 @@ if [ "$ROOT" = "live" ]; then
                 loop*|ram*) continue ;;
             esac
             if mount -t iso9660 -o ro "/dev/$name" /cdrom 2>/dev/null; then
-                if [ -f /cdrom/live-rootfs.tar.gz ]; then
+                if [ -f /cdrom/live-rootfs.tar.xz ]; then
                     found=1
                     break
                 fi
@@ -60,7 +60,7 @@ if [ "$ROOT" = "live" ]; then
                 pname=$(basename "$part")
                 [ -e "/dev/$pname" ] || continue
                 if mount -t iso9660 -o ro "/dev/$pname" /cdrom 2>/dev/null; then
-                    if [ -f /cdrom/live-rootfs.tar.gz ]; then
+                    if [ -f /cdrom/live-rootfs.tar.xz ]; then
                         found=1
                         break 2
                     fi
@@ -71,7 +71,7 @@ if [ "$ROOT" = "live" ]; then
         if [ $found -eq 0 ]; then
             i=$((i + 1))
             if [ $i -ge 30 ]; then
-                echo "[initramfs] ERROR: live-rootfs.tar.gz not found on any iso9660 media after 30s"
+                echo "[initramfs] ERROR: live-rootfs.tar.xz not found on any iso9660 media after 30s"
                 rescue_shell
             fi
             sleep 1
@@ -79,7 +79,7 @@ if [ "$ROOT" = "live" ]; then
     done
 
     mount -t tmpfs tmpfs /newroot
-    tar -xzpf /cdrom/live-rootfs.tar.gz -C /newroot
+    tar -xJpf /cdrom/live-rootfs.tar.xz -C /newroot
     umount /cdrom
 
     boot_root
