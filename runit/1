@@ -48,10 +48,13 @@ modprobe uhid || true
 
 # eudev is built with --disable-kmod (no libkmod in the cross sysroot), so it can
 # never autoload a module for coldplugged hardware on its own - udevadm trigger
-# just relies on a driver already being bound. Load the common keyboard/NIC
-# drivers explicitly so both actually work without depending on which ones
-# happen to be built statically into the kernel.
-for mod in i8042 atkbd serio_raw hid_generic usbhid virtio_net e1000 e1000e igb r8169 i915 amdgpu nouveau radeon; do
+# just relies on a driver already being bound. Load the common keyboard/NIC/wifi/bt
+# drivers explicitly so they all actually work without depending on which ones
+# happen to be built statically into the kernel. btusb in particular has to be a
+# module (not built into the kernel) and loaded here rather than earlier, since
+# probing it before the real root is mounted means its firmware request in
+# /lib/firmware races the live-rootfs tarball extraction and loses.
+for mod in i8042 atkbd serio_raw hid_generic usbhid virtio_net e1000 e1000e igb r8169 i915 amdgpu nouveau radeon iwlwifi ath9k ath10k ath11k brcmfmac mt7921e mt7921u rtw88 rtw89 btusb; do
     modprobe "$mod" 2>/dev/null || true
 done
 
