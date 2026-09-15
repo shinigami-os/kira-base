@@ -220,6 +220,7 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		--disable-blkid \
 		--disable-selinux \
 		--enable-kmod \
+		PKG_CONFIG=pkg-config \
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
