@@ -1,6 +1,5 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
-KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 KIRA_BASE_VERSION = 26.09-4
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
@@ -384,7 +383,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(nproc)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
-	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
+	sudo /sbin/depmod -b $(SYSROOT) "$$(cat $(SHINIGAMI)/include/config/kernel.release)"
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
 	mkdir -p $(SYSROOT)/var/run/dbus
@@ -445,14 +444,15 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	# storage controllers (ahci, virtio-blk) and the CD-ROM translation layer are built as
 	# modules, and this minimal init has no udev/kmod autoload - without these, the live-boot
 	# device scan below can never see a SATA/AHCI or virtio disk, only whatever's built in (NVMe)
-	mkdir -p $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)
-	cp $(SYSROOT)/lib/modules/$(KERNEL_VERSION)/modules.dep $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/
+	KVER="$$(cat $(SHINIGAMI)/include/config/kernel.release)"; \
+	mkdir -p $(INITRAMFS_ROOT)/lib/modules/$$KVER; \
+	cp $(SYSROOT)/lib/modules/$$KVER/modules.dep $(INITRAMFS_ROOT)/lib/modules/$$KVER/; \
 	for mod in kernel/drivers/ata/libahci.ko kernel/drivers/ata/ahci.ko \
 	           kernel/drivers/cdrom/cdrom.ko kernel/drivers/scsi/sr_mod.ko \
 	           kernel/drivers/virtio/virtio_pci_legacy_dev.ko kernel/drivers/virtio/virtio_pci_modern_dev.ko \
 	           kernel/drivers/virtio/virtio_pci.ko kernel/drivers/block/virtio_blk.ko; do \
-		mkdir -p $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/$$(dirname $$mod); \
-		cp $(SYSROOT)/lib/modules/$(KERNEL_VERSION)/$$mod $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/$$mod; \
+		mkdir -p $(INITRAMFS_ROOT)/lib/modules/$$KVER/$$(dirname $$mod); \
+		cp $(SYSROOT)/lib/modules/$$KVER/$$mod $(INITRAMFS_ROOT)/lib/modules/$$KVER/$$mod; \
 	done
 	cp runit/1-initramfs $(INITRAMFS_ROOT)/init
 	chmod +x $(INITRAMFS_ROOT)/init
