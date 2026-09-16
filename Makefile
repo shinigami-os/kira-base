@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.09-5
+KIRA_BASE_VERSION = 26.09-4
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -409,26 +409,6 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	for svc in $(notdir $(wildcard services/*)); do \
 		printf 'service /etc/sv/%s\n' "$$svc" >> $(SYSROOT)/etc/kira-update-manifest; \
 	done
-
-	# small (~3.4MB total), genuinely complete userland tools - BusyBox's own
-	# applets for these are either missing entirely (findmnt) or too limited
-	# for regular use (lsblk with no options at all, sed without GNU
-	# extensions, etc - see kira-installer/install.sh's own history with
-	# this). Installed here rather than kira-installer or install.sh
-	# separately so every consumer of this same rootfs.tar.xz - the live ISO
-	# and any system installed from it - gets them from the same one place.
-	cp /etc/resolv.conf $(SYSROOT)/etc/resolv.conf
-	sudo mount --bind /proc $(SYSROOT)/proc
-	sudo mount --bind /sys $(SYSROOT)/sys
-	sudo mount --bind /dev $(SYSROOT)/dev
-	sudo mount --bind /dev/pts $(SYSROOT)/dev/pts
-	sudo chroot $(SYSROOT) /usr/bin/flux update
-	sudo chroot $(SYSROOT) /usr/bin/flux install -y coreutils findutils grep sed gawk diffutils procps-ng lsblk findmnt
-	sudo umount $(SYSROOT)/dev/pts
-	sudo umount $(SYSROOT)/dev
-	sudo umount $(SYSROOT)/sys
-	sudo umount $(SYSROOT)/proc
-	rm -f $(SYSROOT)/etc/resolv.conf
 
 	touch $@
 
