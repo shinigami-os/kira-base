@@ -14,3 +14,4 @@ kvm:x:36:
 sgx:x:39:
 wheel:x:998:
 netdev:x:997:
+shadow:x:148:

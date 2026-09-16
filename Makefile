@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.09-4
+KIRA_BASE_VERSION = 26.09-5
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -393,7 +393,6 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\nsession required pam_unix.so\nsession optional pam_elogind.so\n' > $(SYSROOT)/etc/pam.d/login
 	sudo chmod 644 $(SYSROOT)/etc/pam.d/login
-	sudo chown root:root $(SYSROOT)/etc/shadow
 	sudo chmod 640 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
@@ -409,6 +408,17 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	for svc in $(notdir $(wildcard services/*)); do \
 		printf 'service /etc/sv/%s\n' "$$svc" >> $(SYSROOT)/etc/kira-update-manifest; \
 	done
+
+	# every plain (non-sudo) cp/printf above created its file owned by whoever
+	# ran make, not root - harmless on this build machine, but --numeric-owner
+	# below bakes that raw uid straight into the image, where it gets
+	# reinterpreted as whatever real user happens to own that same uid on
+	# the machine that boots it (uid 1000 became "kira" on the live ISO and
+	# a fresh install's own first user - /etc/passwd and /etc/pam.d/login
+	# included). Normalize everything to root now that every file is in
+	# place, then restore the one deliberate exception.
+	sudo chown -R root:root $(SYSROOT)
+	sudo chgrp shadow $(SYSROOT)/etc/shadow
 
 	touch $@
 

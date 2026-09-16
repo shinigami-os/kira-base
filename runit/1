@@ -28,8 +28,12 @@ mount -t tmpfs tmpfs /dev/shm
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
 
+# -s (non-empty), not -f (exists) - Alpine's openssh package ships these as
+# empty placeholder files meant to be filled by a post-install trigger flux
+# never runs, so a plain -f check saw the empty file and skipped generating
+# a real one forever, leaving sshd with no usable host key
 for type in rsa ecdsa ed25519; do
-    if [ ! -f /etc/ssh/ssh_host_${type}_key ]; then
+    if [ ! -s /etc/ssh/ssh_host_${type}_key ]; then
         ssh-keygen -t $type -f /etc/ssh/ssh_host_${type}_key -N ""
     fi
 done
