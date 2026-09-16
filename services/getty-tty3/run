@@ -1,0 +1,2 @@
+#!/bin/sh
+exec setsid sh -c 'exec /sbin/getty 38400 tty3 </dev/tty3 >/dev/tty3 2>&1'
