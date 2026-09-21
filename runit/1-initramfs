@@ -78,7 +78,12 @@ if [ "$ROOT" = "live" ]; then
         fi
     done
 
-    mount -t tmpfs tmpfs /newroot
+    # tmpfs defaults to 50% of RAM with no size= - the live rootfs
+    # (currently ~2.2GB uncompressed) doesn't fit that on a 4GB machine,
+    # which is a completely normal VM default, and tar just dies midway
+    # with "No space left on device", never getting far enough to write
+    # /sbin/runit-init before switch_root needs it
+    mount -t tmpfs -o size=90% tmpfs /newroot
     tar -xJpf /cdrom/live-rootfs.tar.xz -C /newroot
     umount /cdrom
 
