@@ -1,2 +1,13 @@
 #!/bin/sh
+# /run is a fresh tmpfs every boot, and flux never ran the Alpine package's
+# own trigger that would normally create this - chronyd -u chrony can't
+# create its own socket/pid file here without it existing with the right
+# owner first. /var/lib/chrony is on disk and survives reboots, but the
+# same trigger gap left it root:root, so chronyd (dropped to the chrony
+# user) never actually had write access to save its drift file either.
+mkdir -p /run/chrony
+chown chrony:chrony /run/chrony
+chmod 750 /run/chrony
+chown chrony:chrony /var/lib/chrony
+
 exec chronyd -d -u chrony -f /etc/chrony.conf
