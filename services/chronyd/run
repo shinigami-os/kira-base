@@ -1,0 +1,2 @@
+#!/bin/sh
+exec chronyd -d -u chrony -f /etc/chrony.conf
