@@ -45,7 +45,13 @@ ip link set lo up
 
 /usr/bin/flux-bootstrap.sh
 
-loadkmap < /etc/keymaps/fr-azerty.bmap || true
+# kira-branding ships exactly one active file here (QWERTY/us by default,
+# kira-installer swaps it for whatever layout was picked at install time) -
+# kira-greetd's start-greeter.sh picks the same file the same way, so the
+# console and the greeter always agree on the layout
+keymap_file=$(ls /etc/keymaps/*.bmap 2>/dev/null | head -n1)
+[ -n "$keymap_file" ] && loadkmap < "$keymap_file" 2>/dev/null
+true
 
 # not hardware-triggered like most modules, so bluetoothd needs it modprobed explicitly
 modprobe uhid || true
