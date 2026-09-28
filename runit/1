@@ -35,6 +35,18 @@ mount -t tmpfs tmpfs /dev/shm
 echo "[stage 1] setting hostname..."
 hostname -F /etc/hostname
 
+# Alpine's own base-files package normally creates this via a trigger flux
+# never runs - without it "localhost" doesn't resolve at all (musl's
+# resolver only checks /etc/hosts then falls through straight to DNS, no
+# hardcoded loopback fallback the way some other libcs have), which breaks
+# anything that binds/connects to "localhost" by name instead of 127.0.0.1
+if [ ! -s /etc/hosts ]; then
+    cat > /etc/hosts << EOF
+127.0.0.1   localhost localhost.localdomain
+::1         localhost localhost.localdomain
+EOF
+fi
+
 # -s (non-empty), not -f (exists) - Alpine's openssh package ships these as
 # empty placeholder files meant to be filled by a post-install trigger flux
 # never runs, so a plain -f check saw the empty file and skipped generating
