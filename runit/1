@@ -17,6 +17,13 @@ fi
 # /var/run must be a symlink to /run: some packages hardcode one path, others the other, and without the symlink they silently can't talk to each other
 rm -rf /var/run
 ln -sf /run /var/run
+# libfuse3 (fusermount3) reads/writes /etc/mtab to track its own mounts - with
+# no mtab at all it can still mount but never registers the mount, so anything
+# checking mount state after the fact (xdg-document-portal's own re-mount
+# detection, "mount | grep doc", umount by path) sees nothing there. Kira
+# never runs a mount(8) that maintains a real mtab, so point it at the kernel's
+# own live mount table instead of trying to keep a separate file in sync
+ln -sf /proc/self/mounts /etc/mtab
 mkdir -p /run/dbus
 # elogind refuses to manage this dir (blocking login) unless it's exactly 0755; it makes each user's own 0700 subdir underneath, so 1777 here is unneeded
 mkdir -p /run/user
