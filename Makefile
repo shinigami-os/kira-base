@@ -1,7 +1,7 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.09-5
+KIRA_BASE_VERSION = 26.09-6
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
@@ -162,6 +162,9 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 		rm -f $(SYSROOT)/sbin/$$cmd; \
 		printf '#!/bin/sh\nexec /bin/busybox %s -f "$$@"\n' "$$cmd" > $(SYSROOT)/sbin/$$cmd; \
 		chmod 755 $(SYSROOT)/sbin/$$cmd; \
+	done
+	for cmd in sv chpst runsv runsvdir svlogd; do \
+		rm -f $(SYSROOT)/bin/$$cmd $(SYSROOT)/usr/bin/$$cmd $(SYSROOT)/usr/sbin/$$cmd; \
 	done
 
 	touch $@
