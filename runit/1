@@ -14,6 +14,9 @@ mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
+# nothing else reads /etc/fstab: without these /boot/efi stays unmounted and swap never activates
+mount -a 2>/dev/null || true
+swapon -a 2>/dev/null || true
 # /var/run must be a symlink to /run: some packages hardcode one path, others the other, and without the symlink they silently can't talk to each other
 rm -rf /var/run
 ln -sf /run /var/run
@@ -58,6 +61,8 @@ for type in rsa ecdsa ed25519; do
 done
 
 export SVDIR=/etc/sv
+# runit's sv looks in /service when SVDIR is unset (sudo, non-login shells), so "sv status iwd" needs this
+ln -sfn /etc/sv /service
 
 echo "[stage 1] bringing up loopback..."
 ip link set lo up

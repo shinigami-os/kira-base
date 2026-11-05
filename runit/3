@@ -8,6 +8,7 @@ sleep 1
 kill -KILL -1
 
 echo "[stage 3] unmounting filesystems..."
+umount /boot/efi 2>/dev/null
 umount /run
 umount /dev/pts
 umount /dev
