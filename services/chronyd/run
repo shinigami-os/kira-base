@@ -10,4 +10,4 @@ chown chrony:chrony /run/chrony
 chmod 750 /run/chrony
 chown chrony:chrony /var/lib/chrony
 
-exec chronyd -d -u chrony -f /etc/chrony.conf
+exec chronyd -d -u chrony -f /etc/chrony/chrony.conf
