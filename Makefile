@@ -17,6 +17,7 @@ MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.22
 CA_CERTIFICATES_V = 2026-05-14
 SHINIGAMI = $(CURDIR)/../shinigami
+JOBS ?= 4
 
 MUSL_CC = $(SYSROOT)/usr/bin/musl-gcc
 
@@ -172,7 +173,7 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	echo "$(MUSL_CC)" > $(<D)/src/conf-cc
 	echo "$(MUSL_CC)" > $(<D)/src/conf-ld
-	cd $(<D)/src && make -j$(nproc)
+	cd $(<D)/src && make -j$(JOBS)
 	install -m 755 \
 		$(<D)/src/runit \
 		$(<D)/src/runit-init \
@@ -200,7 +201,7 @@ build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/musl.stamp |
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -227,7 +228,7 @@ build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stam
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 	find $(SYSROOT) -type l | while read link; do \
 		target=$$(readlink "$$link"); \
@@ -254,7 +255,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -262,7 +263,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ | build/stamps/
 	cd $(<D) && \
 	CC=$(MUSL_CC) ./configure --prefix=/usr && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 
 	touch $@
@@ -275,7 +276,7 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/lib -L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 	rm -f $(SYSROOT)/usr/lib/libssl.la \
 		$(SYSROOT)/usr/lib/libcrypto.la \
@@ -300,7 +301,7 @@ build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp b
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 
 	mkdir -p $(SYSROOT)/etc/ssl/certs
@@ -318,7 +319,7 @@ build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stam
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
 		LDFLAGS="-L$(SYSROOT)/usr/lib" && \
-	make -j$(nproc) && \
+	make -j$(JOBS) && \
 	make install DESTDIR=$(SYSROOT)
 	
 	touch $@
@@ -333,19 +334,19 @@ build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/
 		-DSODIUM_INCLUDE_DIR=$(SYSROOT)/usr/include \
 		-DSODIUM_LIBRARY=$(SYSROOT)/usr/lib/libsodium.a \
 		.. && \
-	make -j$(nproc) && make install DESTDIR=$(SYSROOT)
+	make -j$(JOBS) && make install DESTDIR=$(SYSROOT)
 	
 	touch $@
 
 build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/musl.stamp | build/stamps/
 	cd $(<D) && \
-	make -j$(nproc) CC=$(MUSL_CC) PREFIX=/usr && \
+	make -j$(JOBS) CC=$(MUSL_CC) PREFIX=/usr && \
 	make install PREFIX=/usr DESTDIR=$(SYSROOT)
 	
 	touch $@
 
 build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/stamps/
-	make -j$(nproc) CC=$(MUSL_CC) -C $(<D)
+	make -j$(JOBS) CC=$(MUSL_CC) -C $(<D)
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	mkdir -p $(SYSROOT)/etc/flux/alpine-keys
 	install -m 644 $(<D)/keys/alpine/*.rsa.pub $(SYSROOT)/etc/flux/alpine-keys/
@@ -384,7 +385,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	else \
 		CLANG_CC="clang"; \
 	fi; \
-	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(nproc)
+	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(JOBS)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
@@ -426,7 +427,7 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	touch $@
 
 build/stamps/kernel-headers.stamp: | build/stamps/
-	make -j$(nproc) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)/usr
+	make -j$(JOBS) -C $(SHINIGAMI) headers_install INSTALL_HDR_PATH=$(SYSROOT)/usr
 	touch $@
 
 build/microcode.cpio: build/sources/intel-ucode/ build/sources/amd-ucode/ | build/
