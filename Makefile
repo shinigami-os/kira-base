@@ -422,7 +422,10 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	# included). Normalize everything to root now that every file is in
 	# place, then restore the one deliberate exception.
 	sudo chown -R root:root $(SYSROOT)
-	sudo chgrp shadow $(SYSROOT)/etc/shadow
+	# by number from the image's own /etc/group: a bare "shadow" resolves against
+	# the build host's group file (gid 42 there, 148 in Kira), and unix_chkpwd
+	# then can't read /etc/shadow on the installed system
+	sudo chgrp $$(awk -F: '$$1 == "shadow" { print $$3 }' $(SYSROOT)/etc/group) $(SYSROOT)/etc/shadow
 
 	touch $@
 
