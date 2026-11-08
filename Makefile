@@ -397,6 +397,10 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\nsession required pam_unix.so\nsession optional pam_elogind.so\n' > $(SYSROOT)/etc/pam.d/login
 	sudo chmod 644 $(SYSROOT)/etc/pam.d/login
+	# polkit's admin prompts: without their own file PAM falls back to /etc/pam.d/other, which Kira doesn't
+	# have, and every polkit authentication (pkexec, the desktop's password dialogs) failed
+	printf 'auth include login\naccount include login\nsession include login\n' > $(SYSROOT)/etc/pam.d/polkit-1
+	sudo chmod 644 $(SYSROOT)/etc/pam.d/polkit-1
 	sudo chmod 640 $(SYSROOT)/etc/shadow
 	chmod +x $(SYSROOT)/etc/runit/*
 	chmod +x $(SYSROOT)/etc/sv/*/run
