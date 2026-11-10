@@ -8,3 +8,4 @@ done
 udevadm trigger --action=add
 udevadm settle
 touch /etc/sv/eudev-trigger/down
+sv d /etc/sv/eudev-trigger
