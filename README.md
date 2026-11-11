@@ -15,10 +15,10 @@ kira-base follows a strict **core vs flux-managed** boundary:
 **Flux-managed (installed by kira-installer, not this repo):**
 - Shell: `zsh`, `zsh-plugins`, `kira-branding`
 - Seat/login (server tier): `kira-seat`, `kira-login`
-- Login manager (desktop tier): `greetd` + `cage` + `regreet` + `accountsservice`
-- Networking: `kira-net`
+- Login manager (desktop tier): `kira-greetd`, which is `greetd` + `cage` hosting a Quickshell login screen (a qylock theme), with the eww Kira Login as its fallback
+- Networking: `kira-net` (NetworkManager, with wpa_supplicant as its Wi-Fi backend)
 - Session bus: `kira-session-bus`
-- Desktop: `kira-desktop-swayFX`, `kira-desktop-sleex`
+- Desktop: `kira-the-line` (Kira's own), `kira-desktop-sleex`
 
 ## Stack
 
@@ -26,10 +26,10 @@ kira-base follows a strict **core vs flux-managed** boundary:
 |---|---|---|
 | libc | musl | 1.2.6 |
 | Init | runit | 2.3.1 |
-| Userland | BusyBox (static) | 1.37.0 |
+| Userland | BusyBox (static) | 1.38.0 |
 | Device management | eudev | 3.2.14 |
 | Module autoload | kmod (libkmod only, built for eudev) | 34.2 |
-| DHCP | dhcpcd | 10.3.2 (binary only : service via kira-net) |
+| DHCP | dhcpcd | 10.5.2 (binary only : service via kira-net) |
 | TLS | LibreSSL | 4.3.1 |
 | Package manager | flux | cloned fresh from the `flux` repo's default branch at build time, always the latest commit |
 
@@ -96,20 +96,22 @@ kernel → runit-init (PID 1)
   └── stage 3: shutdown cleanup
 ```
 
+The oneshot services (`eudev-trigger`, `udev-input-trigger`) end their `run` script with `touch <service>/down` and then `sv d <service>`. The `sv d` is what keeps them down: runit only reads `down` when it starts a service, so without it the service is restarted as soon as it exits (for `eudev-trigger` that meant a full device coldplug every second or so).
+
 Historical note: an earlier revision shipped a dedicated `i915` oneshot service to work around the Intel graphics driver not loading at boot. The real cause was `udevadm trigger` defaulting to `--action=change` (which never fires kmod-load rules); fixing that in `eudev-trigger` (now using `--action=add`) made the dedicated service redundant, and it was removed. That alone wasn't the whole story though: eudev was still being built with `--disable-kmod` (no libkmod in the cross sysroot), so it had no kmod-load rule to fire regardless of trigger action. `runit/1`'s explicit `modprobe` list for keyboard/NIC/GPU/wifi/bluetooth drivers was the interim workaround for that. eudev now builds libkmod itself first and links against it (`--enable-kmod`), so coldplugged hardware gets a real driver automatically; the explicit list stays as a safety net for now rather than being removed sight unseen.
 
 ## Tier detection
 
-`/etc/kira-tier` contains `server`, `desktop-sleex`, or `desktop-swayfx` on an installed system (an earlier coarse `server`/`desktop` value is written into the live ISO by `kira-installer`'s Makefile, then refined during the guided install). No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by `kira-installer` (e.g. whether `greetd` and a DE package get installed at all).
+`/etc/kira-tier` contains `server` or `desktop-sleex` on an installed system (an earlier coarse `server`/`desktop` value is written into the live ISO by `kira-installer`'s Makefile, then refined during the guided install). No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by `kira-installer` (e.g. whether `greetd` and a DE package get installed at all).
 
 ## Versioning
 
-Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (e.g. current: `26.08`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.08`).
+Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix release in that month (e.g. current: `26.11-1`). `KIRA_BASE_VERSION` in the Makefile is the single source of truth; it gets baked into every built sysroot as `/etc/kira-release` (`KIRA_BASE_VERSION=26.11-1`).
 
-**Updating an installed system: `flux base-update`.** Unlike flux (a single binary, atomically replaceable) kira-base ships musl, BusyBox, and runit : things every running process and PID 1 itself depend on continuously, so it can't rebuild itself from source on an installed system (no cross-toolchain or kernel tree there) or hot-swap its core the way flux hot-swaps its own binary. Instead:
+**Updating an installed system: `flux sys upgrade base`.** Unlike flux (a single binary, atomically replaceable) kira-base ships musl, BusyBox, and runit : things every running process and PID 1 itself depend on continuously, so it can't rebuild itself from source on an installed system (no cross-toolchain or kernel tree there) or hot-swap its core the way flux hot-swaps its own binary. Instead:
 - `make` here produces `build/rootfs.tar.xz` (the full sysroot) and `build/initramfs.cpio.gz`.
 - `sysroot.stamp` also writes `/etc/kira-update-manifest` into the sysroot, classifying every core file as `live` (safe to replace immediately : musl, BusyBox, curl, the CA bundle, the bootstrap `dhcpcd`), `restart:<service>` (replaced then that service restarted; e.g. `eudev`), or `boot` (replaced on disk but only takes effect next reboot : `runit-init`/`runsvdir`/`runsv`/`sv`/`chpst`/`svlogd`, the `runit/1,2,3` stage scripts, since they're already running and a file replace doesn't change what's in memory).
-- On an installed Kira system, `flux update` checks `kira-base`'s tags against `/etc/kira-release` and tells you to run `flux base-update` if there's a newer one (never runs it automatically). `flux base-update` downloads, verifies, and applies the manifest, including the new initramfs, then reports whether a reboot is needed.
+- On an installed Kira system, `flux sys check` checks `kira-base`'s tags against `/etc/kira-release` and tells you to run `flux sys upgrade base` if there's a newer one (never runs it automatically). `flux sys upgrade base` downloads, verifies, and applies the manifest, including the new initramfs, then reports whether a reboot is needed.
 
 This relies on the minimal-initramfs + `switch_root` boot model (`runit/1-initramfs`: a tiny busybox-only initramfs that mounts the real root and switches into it) being in place, since that's what makes the initramfs a small, cleanly-swappable artifact separate from the running system.
 
