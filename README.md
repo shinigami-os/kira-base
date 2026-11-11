@@ -58,7 +58,7 @@ To rebuild without re-downloading sources:
 make soft-clean && make
 ```
 
-> **Note:** The initramfs produced here boots to a bare BusyBox shell with flux available. This is intentional : it's the bootstrap layer only. To get a usable system, use `kira-installer` to produce a live ISO and run the installer.
+> **Note:** The initramfs produced here boots to a bare BusyBox shell with flux available. This is intentional : it's the bootstrap layer only. To get a usable system, use `kira-installer`, whose one ISO boots straight into the installer.
 
 ## Repository Layout
 
@@ -102,7 +102,7 @@ Historical note: an earlier revision shipped a dedicated `i915` oneshot service 
 
 ## Tier detection
 
-`/etc/kira-tier` contains `server` or `desktop-sleex` on an installed system (an earlier coarse `server`/`desktop` value is written into the live ISO by `kira-installer`'s Makefile, then refined during the guided install). No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by `kira-installer` (e.g. whether `greetd` and a DE package get installed at all).
+`/etc/kira-tier` contains `server`, `desktop-the-line` or `desktop-sleex` on an installed system, written by the installer from the system you picked. No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by the installer (e.g. whether `greetd` and a DE package get installed at all).
 
 ## Versioning
 
