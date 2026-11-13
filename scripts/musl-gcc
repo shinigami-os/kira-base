@@ -1,0 +1,5 @@
+#!/bin/sh
+for arg in "$@"; do
+    [ "$arg" = "-static" ] && exec "${REALGCC:-gcc}" "$@" -no-pie -specs "@SYSROOT@/usr/lib/musl-gcc.specs"
+done
+exec "${REALGCC:-gcc}" "$@" -specs "@SYSROOT@/usr/lib/musl-gcc.specs"

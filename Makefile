@@ -154,14 +154,16 @@ build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 
 	touch $@
 
-build/stamps/ssp.stamp: build/stamps/musl.stamp | build/stamps/
+build/stamps/wrapper.stamp: build/stamps/musl.stamp | build/stamps/
 	mkdir -p build/ssp
 	rm -f build/ssp/libssp_nonshared.a
 	ar rc build/ssp/libssp_nonshared.a
 	sed -i 's|^-L$(SYSROOT)/usr/lib -L .%s$$|-L$(SYSROOT)/usr/lib -L$(CURDIR)/build/ssp -L .%s|' $(SYSROOT)/usr/lib/musl-gcc.specs
+	sed 's|@SYSROOT@|$(SYSROOT)|g' scripts/musl-gcc > $(SYSROOT)/usr/bin/musl-gcc
+	chmod 755 $(SYSROOT)/usr/bin/musl-gcc
 	touch $@
 
-build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/kernel-headers.stamp build/stamps/ssp.stamp | build/stamps/
+build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/kernel-headers.stamp build/stamps/wrapper.stamp | build/stamps/
 	cp $(CURDIR)/config/busybox.config $(<D)/.config
 	cd $(<D) && \
 	make -j$(JOBS) CC=$(MUSL_CC) && \
@@ -178,7 +180,7 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 
 	touch $@
 
-build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ build/stamps/wrapper.stamp | build/stamps/
 	echo "$(MUSL_CC)" > $(<D)/src/conf-cc
 	echo "$(MUSL_CC)" > $(<D)/src/conf-ld
 	cd $(<D)/src && make -j$(JOBS)
@@ -194,7 +196,7 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ build/stamps/ssp.stamp
 	
 	touch $@
 
-build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/wrapper.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--host=x86_64-linux-musl \
@@ -214,7 +216,7 @@ build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/ssp.stamp | 
 
 	touch $@
 
-build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/ssp.stamp build/stamps/kmod.stamp | build/stamps/
+build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/wrapper.stamp build/stamps/kmod.stamp | build/stamps/
 	rm -f $(SYSROOT)/usr/lib/libkmod.la
 	cd $(<D) && \
 	PKG_CONFIG_PATH="$(SYSROOT)/usr/lib/pkgconfig" \
@@ -267,7 +269,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 
 	touch $@
 
-build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ build/stamps/wrapper.stamp | build/stamps/
 	cd $(<D) && \
 	CC=$(MUSL_CC) ./configure --prefix=/usr && \
 	make -j$(JOBS) && \
@@ -275,7 +277,7 @@ build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ build/stamps/ssp.stamp | 
 
 	touch $@
 
-build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ build/stamps/wrapper.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -291,7 +293,7 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ build/stamps/
 	
 	touch $@
 
-build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/ssp.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
+build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/wrapper.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -316,7 +318,7 @@ build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/ssp.stamp bu
 	
 	touch $@
 
-build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stamps/wrapper.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -331,7 +333,7 @@ build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stam
 	
 	touch $@
 
-build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/ssp.stamp | build/stamps/
+build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/wrapper.stamp | build/stamps/
 	mkdir -p $(<D)/build
 	cd $(<D)/build && cmake \
 		-DCMAKE_MAKE_PROGRAM=make \
@@ -345,21 +347,22 @@ build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/
 	
 	touch $@
 
-build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/wrapper.stamp | build/stamps/
 	cd $(<D) && \
 	make -j$(JOBS) CC=$(MUSL_CC) PREFIX=/usr && \
 	make install PREFIX=/usr DESTDIR=$(SYSROOT)
 	
 	touch $@
 
-build/stamps/flux.stamp: build/sources/flux/ build/stamps/ssp.stamp | build/stamps/
+build/stamps/flux.stamp: build/sources/flux/ build/stamps/wrapper.stamp | build/stamps/
 	make -j$(JOBS) CC=$(MUSL_CC) -C $(<D)
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	mkdir -p $(SYSROOT)/etc/flux/alpine-keys
 	install -m 644 $(<D)/keys/alpine/*.rsa.pub $(SYSROOT)/etc/flux/alpine-keys/
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) $(wildcard services/*) $(wildcard services/**/*) | build/sysroot/
+build/stamps/sysroot.stamp: build/stamps/wrapper.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) $(wildcard services/*) $(wildcard services/**/*) | build/sysroot/
+	for f in bin/busybox sbin/runit sbin/runit-init; do readelf -h $(SYSROOT)/$$f | grep -q 'Type: *EXEC' || { echo "$$f is not a plain static executable" >&2; exit 1; }; done
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
