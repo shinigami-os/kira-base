@@ -1,6 +1,11 @@
 #!/bin/sh
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 echo "[stage 3] shutting down..."
+
+echo "[stage 3] stopping services..."
+sv -w 7 force-stop /etc/sv/* 2>/dev/null
+sv exit /etc/sv/* 2>/dev/null
 
 echo "[stage 3] killing all processes..."
 kill -TERM -1
@@ -22,4 +27,3 @@ echo "[stage 3] mounting root (read-only)..."
 mount -o remount,ro /
 
 echo "[stage 3] done"
-

@@ -100,6 +100,12 @@ The oneshot services (`eudev-trigger`, `udev-input-trigger`) end their `run` scr
 
 Historical note: an earlier revision shipped a dedicated `i915` oneshot service to work around the Intel graphics driver not loading at boot. The real cause was `udevadm trigger` defaulting to `--action=change` (which never fires kmod-load rules); fixing that in `eudev-trigger` (now using `--action=add`) made the dedicated service redundant, and it was removed. That alone wasn't the whole story though: eudev was still being built with `--disable-kmod` (no libkmod in the cross sysroot), so it had no kmod-load rule to fire regardless of trigger action. `runit/1`'s explicit `modprobe` list for keyboard/NIC/GPU/wifi/bluetooth drivers was the interim workaround for that. eudev now builds libkmod itself first and links against it (`--enable-kmod`), so coldplugged hardware gets a real driver automatically; the explicit list stays as a safety net for now rather than being removed sight unseen.
 
+## Shutdown
+
+`reboot`, `poweroff` and `halt` (what elogind and the desktops call) ask runit to shut down: `runit-init 6` or `runit-init 0` make runit stop stage 2 and run `runit/3`, which stops every service (`sv -w 7 force-stop`), kills what is left, unmounts, syncs and remounts the root read-only, and runit then powers off or reboots. `reboot -f`, `poweroff -f` and `halt -f` still force it at once through BusyBox, for a system that is stuck.
+
+The serial console (`console` service) only starts when the kernel command line has `console=ttyS0`, and it asks for a login.
+
 ## Tier detection
 
 `/etc/kira-tier` contains `server`, `desktop-the-line` or `desktop-sleex` on an installed system, written by the installer from the system you picked. No core service in this repo reads it : the tier only matters to flux-managed packages/services installed by the installer (e.g. whether `greetd` and a DE package get installed at all).
