@@ -1,6 +1,6 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
-KERNEL_VERSION := $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
+KERNEL_VERSION = $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
 KIRA_BASE_VERSION = 26.11-4
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
@@ -396,7 +396,7 @@ build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp bu
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(JOBS)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
 	sudo chown -R $(or $(SUDO_UID),$(shell id -u)):$(or $(SUDO_GID),$(shell id -g)) $(SHINIGAMI)
-	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
+	sudo /sbin/depmod -b $(SYSROOT) $$(cat $(SHINIGAMI)/include/config/kernel.release)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
 	mkdir -p $(SYSROOT)/var/run/dbus
