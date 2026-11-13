@@ -146,7 +146,7 @@ build/sources/minisign-$(MINISIGN_V)/: build/sources/minisign-$(MINISIGN_V).tar.
 build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 	cd $(<D) && \
 	./configure --prefix=$(SYSROOT)/usr --syslibdir=$(SYSROOT)/lib --enable-wrapper=gcc && \
-	make && \
+	make -j$(JOBS) && \
 	make install
 	sed -i 's|-dynamic-linker $(SYSROOT)/lib/ld-musl-x86_64.so.1|-dynamic-linker /lib/ld-musl-x86_64.so.1|' $(SYSROOT)/usr/lib/musl-gcc.specs
 	mv $(SYSROOT)/usr/lib/libc.so $(SYSROOT)/lib/ld-musl-x86_64.so.1
@@ -154,10 +154,17 @@ build/stamps/musl.stamp: build/sources/musl-$(MUSL_V)/ | build/stamps/
 
 	touch $@
 
-build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/kernel-headers.stamp | build/stamps/
+build/stamps/ssp.stamp: build/stamps/musl.stamp | build/stamps/
+	mkdir -p build/ssp
+	rm -f build/ssp/libssp_nonshared.a
+	ar rc build/ssp/libssp_nonshared.a
+	sed -i 's|^-L$(SYSROOT)/usr/lib -L .%s$$|-L$(SYSROOT)/usr/lib -L$(CURDIR)/build/ssp -L .%s|' $(SYSROOT)/usr/lib/musl-gcc.specs
+	touch $@
+
+build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/kernel-headers.stamp build/stamps/ssp.stamp | build/stamps/
 	cp $(CURDIR)/config/busybox.config $(<D)/.config
 	cd $(<D) && \
-	make CC=$(MUSL_CC) && \
+	make -j$(JOBS) CC=$(MUSL_CC) && \
 	make install CC=$(MUSL_CC) CONFIG_PREFIX=$(SYSROOT)
 	for cmd in reboot poweroff halt; do \
 		rm -f $(SYSROOT)/sbin/$$cmd; \
@@ -170,7 +177,7 @@ build/stamps/busybox.stamp: build/sources/busybox-$(BUSYBOX_V)/ build/stamps/ker
 
 	touch $@
 
-build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
+build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ build/stamps/ssp.stamp | build/stamps/
 	echo "$(MUSL_CC)" > $(<D)/src/conf-cc
 	echo "$(MUSL_CC)" > $(<D)/src/conf-ld
 	cd $(<D)/src && make -j$(JOBS)
@@ -186,7 +193,7 @@ build/stamps/runit.stamp: build/sources/runit-$(RUNIT_V)/ | build/stamps/
 	
 	touch $@
 
-build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/musl.stamp | build/stamps/
+build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/ssp.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--host=x86_64-linux-musl \
@@ -209,7 +216,8 @@ build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/musl.stamp |
 # eudev's own modules never actually get autoloaded without this - see runit/1's
 # comment for the fallout when it's missing (an explicit modprobe list to work
 # around every device that used to silently never get a driver)
-build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/musl.stamp build/stamps/kmod.stamp | build/stamps/
+build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/ssp.stamp build/stamps/kmod.stamp | build/stamps/
+	rm -f $(SYSROOT)/usr/lib/libkmod.la
 	cd $(<D) && \
 	PKG_CONFIG_PATH="$(SYSROOT)/usr/lib/pkgconfig" \
 	PKG_CONFIG_LIBDIR="$(SYSROOT)/usr/lib/pkgconfig" \
@@ -251,6 +259,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 		--libexecdir=/usr/lib/dhcpcd \
 		--runstatedir=/run \
 		--without-dev \
+		--without-openssl \
 		--host=x86_64-linux-musl \
 		CC=$(MUSL_CC) \
 		CFLAGS="-I$(SYSROOT)/usr/include" \
@@ -260,7 +269,7 @@ build/stamps/dhcpcd.stamp: build/sources/dhcpcd-$(DHCPCD_V)/ build/stamps/eudev.
 
 	touch $@
 
-build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ | build/stamps/
+build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ build/stamps/ssp.stamp | build/stamps/
 	cd $(<D) && \
 	CC=$(MUSL_CC) ./configure --prefix=/usr && \
 	make -j$(JOBS) && \
@@ -268,7 +277,7 @@ build/stamps/zlib.stamp: build/sources/zlib-$(ZLIB_V)/ | build/stamps/
 
 	touch $@
 
-build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamps/
+build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ build/stamps/ssp.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -284,7 +293,7 @@ build/stamps/libressl.stamp: build/sources/libressl-$(LIBRESSL_V)/ | build/stamp
 	
 	touch $@
 
-build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
+build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/ssp.stamp build/stamps/zlib.stamp build/stamps/libressl.stamp build/sources/ca-certificates-$(CA_CERTIFICATES_V).pem | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -309,7 +318,7 @@ build/stamps/curl.stamp: build/sources/curl-$(CURL_V)/ build/stamps/musl.stamp b
 	
 	touch $@
 
-build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stamps/musl.stamp | build/stamps/
+build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stamps/ssp.stamp | build/stamps/
 	cd $(<D) && \
 	./configure \
 		--prefix=/usr \
@@ -324,7 +333,7 @@ build/stamps/libsodium.stamp: build/sources/libsodium-$(LIBSODIUM_V)/ build/stam
 	
 	touch $@
 
-build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/musl.stamp | build/stamps/
+build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/libsodium.stamp build/stamps/ssp.stamp | build/stamps/
 	mkdir -p $(<D)/build
 	cd $(<D)/build && cmake \
 		-DCMAKE_MAKE_PROGRAM=make \
@@ -338,21 +347,21 @@ build/stamps/minisign.stamp: build/sources/minisign-$(MINISIGN_V)/ build/stamps/
 	
 	touch $@
 
-build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/musl.stamp | build/stamps/
+build/stamps/zstd.stamp: build/sources/zstd-$(ZSTD_V)/ build/stamps/ssp.stamp | build/stamps/
 	cd $(<D) && \
 	make -j$(JOBS) CC=$(MUSL_CC) PREFIX=/usr && \
 	make install PREFIX=/usr DESTDIR=$(SYSROOT)
 	
 	touch $@
 
-build/stamps/flux.stamp: build/sources/flux/ build/stamps/musl.stamp | build/stamps/
+build/stamps/flux.stamp: build/sources/flux/ build/stamps/ssp.stamp | build/stamps/
 	make -j$(JOBS) CC=$(MUSL_CC) -C $(<D)
 	install -Dm755 $(<D)/build/flux $(SYSROOT)/usr/bin/flux
 	mkdir -p $(SYSROOT)/etc/flux/alpine-keys
 	install -m 644 $(<D)/keys/alpine/*.rsa.pub $(SYSROOT)/etc/flux/alpine-keys/
 	touch $@
 
-build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) $(wildcard services/*) $(wildcard services/**/*) | build/sysroot/
+build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp build/stamps/runit.stamp build/stamps/eudev.stamp build/stamps/dhcpcd.stamp build/stamps/flux.stamp build/stamps/curl.stamp build/stamps/libsodium.stamp build/stamps/minisign.stamp build/stamps/zstd.stamp scripts/flux-bootstrap.sh scripts/fetch runit/1 runit/2 runit/3 $(wildcard config/etc/*) $(wildcard config/etc/**/*) $(wildcard config/lib/modules/**/*) $(wildcard services/*) $(wildcard services/**/*) | build/sysroot/
 	mkdir -p $(addprefix $(SYSROOT)/, $(SYSROOT_BASE))
 	chmod 700 $(SYSROOT)/root
 	chmod 1777 $(SYSROOT)/tmp
@@ -387,12 +396,14 @@ build/stamps/sysroot.stamp: build/stamps/musl.stamp build/stamps/busybox.stamp b
 	fi; \
 	$(MAKE) -C $(SHINIGAMI) LLVM=1 CC="$$CLANG_CC" HOSTCC="$$CLANG_CC" -j$(JOBS)
 	sudo $(MAKE) -C $(SHINIGAMI) LLVM=1 INSTALL_MOD_PATH=$(SYSROOT) modules_install
-	sudo chown -R $(shell id -u):$(shell id -g) $(SHINIGAMI)
+	sudo chown -R $(or $(SUDO_UID),$(shell id -u)):$(or $(SUDO_GID),$(shell id -g)) $(SHINIGAMI)
 	sudo /sbin/depmod -b $(SYSROOT) $(KERNEL_VERSION)
 	mkdir -p $(SYSROOT)/etc/ssl/certs
 	mkdir -p $(SYSROOT)/run/dbus
 	mkdir -p $(SYSROOT)/var/run/dbus
-	install -m 755 scripts/flux-bootstrap.sh $(SYSROOT)/usr/bin/flux-bootstrap.sh
+	FLUX_V=$$(sed -n 's/^#define FLUX_VERSION "\(.*\)"/\1/p' build/sources/flux/include/flux.h); \
+	sed -e 's/@MUSL_V@/$(MUSL_V)/' -e 's/@BUSYBOX_V@/$(BUSYBOX_V)/' -e 's/@RUNIT_V@/$(RUNIT_V)/' -e 's/@EUDEV_V@/$(EUDEV_V)/' -e 's/@DHCPCD_V@/$(DHCPCD_V)/' -e 's/@ZLIB_V@/$(ZLIB_V)/' -e 's/@LIBRESSL_V@/$(LIBRESSL_V)/' -e 's/@CURL_V@/$(CURL_V)/' -e 's/@ZSTD_V@/$(ZSTD_V)/' -e 's/@LIBSODIUM_V@/$(LIBSODIUM_V)/' -e 's/@MINISIGN_V@/$(MINISIGN_V)/' -e "s/@FLUX_V@/$$FLUX_V/" scripts/flux-bootstrap.sh > $(SYSROOT)/usr/bin/flux-bootstrap.sh
+	chmod 755 $(SYSROOT)/usr/bin/flux-bootstrap.sh
 	install -m 755 scripts/fetch $(SYSROOT)/usr/bin/fetch
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\nsession required pam_unix.so\nsession optional pam_elogind.so\n' > $(SYSROOT)/etc/pam.d/login
@@ -456,7 +467,7 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	mkdir -p $(INITRAMFS_ROOT)/cdrom
 	cp $(SYSROOT)/lib/ld-musl-x86_64.so.1 $(INITRAMFS_ROOT)/lib/
 	cp $(SYSROOT)/bin/busybox $(INITRAMFS_ROOT)/bin/busybox
-	for cmd in sh cat grep tr cut sleep mkdir basename tar ls; do \
+	for cmd in sh cat grep tr cut tail sleep mkdir basename tar ls; do \
 		ln -sf busybox $(INITRAMFS_ROOT)/bin/$$cmd; \
 	done
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/mount

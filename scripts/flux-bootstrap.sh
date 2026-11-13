@@ -19,15 +19,15 @@ EOF
     touch "$dir/files"
 }
 
-register musl          1.2.6
-register busybox       1.37.0
-register runit         2.3.1
-register eudev         3.2.14
-register dhcpcd        10.3.2
-register zlib          1.3.2
-register libressl      4.3.1
-register curl          8.20.0
-register zstd          1.5.7
-register libsodium     1.0.20
-register minisign      0.12
-register flux          0.1.0
+register musl       @MUSL_V@
+register busybox    @BUSYBOX_V@
+register runit      @RUNIT_V@
+register eudev      @EUDEV_V@
+register dhcpcd     @DHCPCD_V@
+register zlib       @ZLIB_V@
+register libressl   @LIBRESSL_V@
+register curl       @CURL_V@
+register zstd       @ZSTD_V@
+register libsodium  @LIBSODIUM_V@
+register minisign   @MINISIGN_V@
+register flux       @FLUX_V@
