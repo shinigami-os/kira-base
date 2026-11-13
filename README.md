@@ -113,6 +113,8 @@ Same release-based scheme as `flux`: `YY.MM`, optionally `-N` for a hotfix relea
 - `sysroot.stamp` also writes `/etc/kira-update-manifest` into the sysroot, classifying every core file as `live` (safe to replace immediately : musl, BusyBox, curl, the CA bundle, the bootstrap `dhcpcd`), `restart:<service>` (replaced then that service restarted; e.g. `eudev`), or `boot` (replaced on disk but only takes effect next reboot : `runit-init`/`runsvdir`/`runsv`/`sv`/`chpst`/`svlogd`, the `runit/1,2,3` stage scripts, since they're already running and a file replace doesn't change what's in memory).
 - On an installed Kira system, `flux sys check` checks `kira-base`'s tags against `/etc/kira-release` and tells you to run `flux sys upgrade base` if there's a newer one (never runs it automatically). `flux sys upgrade base` downloads, verifies, and applies the manifest, including the new initramfs, then reports whether a reboot is needed.
 
+The initramfs hands over to the program named by `init=` on the kernel command line (the last one wins, like in the kernel) and to `/sbin/runit-init` when there is none or it is missing from the new root, so `init=/bin/sh` works as a repair shell and tools that wrap init (such as kokuin's `kokuin-init`) can sit in front of runit.
+
 This relies on the minimal-initramfs + `switch_root` boot model (`runit/1-initramfs`: a tiny busybox-only initramfs that mounts the real root and switches into it) being in place, since that's what makes the initramfs a small, cleanly-swappable artifact separate from the running system.
 
 ## License

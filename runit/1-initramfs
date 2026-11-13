@@ -9,12 +9,11 @@ rescue_shell() {
 }
 
 boot_root() {
-    echo "[initramfs] preflight: /sbin/runit-init at $ROOT"
-    ls -la /newroot/sbin/runit-init
-    mount | grep newroot
-    /newroot/sbin/runit-init
-    echo "[initramfs] preflight exec rc=$?"
-    exec switch_root /newroot /sbin/runit-init
+    if [ ! -x "/newroot$INIT" ] && [ ! -L "/newroot$INIT" ]; then
+        echo "[initramfs] init=$INIT is not in the new root, starting /sbin/runit-init instead"
+        INIT=/sbin/runit-init
+    fi
+    exec switch_root /newroot "$INIT"
     echo "[initramfs] ERROR: switch_root itself failed to start"
     rescue_shell
 }
@@ -30,6 +29,10 @@ for mod in libahci ahci cdrom sr_mod virtio_pci_legacy_dev virtio_pci_modern_dev
 done
 
 ROOT=$(cat /proc/cmdline | tr ' ' '\n' | grep '^root=' | cut -d= -f2-)
+
+# like the kernel, the last init= wins; without one runit is started
+INIT=$(cat /proc/cmdline | tr ' ' '\n' | grep '^init=' | tail -n 1 | cut -d= -f2-)
+[ -n "$INIT" ] || INIT=/sbin/runit-init
 
 if [ -z "$ROOT" ]; then
     echo "[initramfs] ERROR: no root= in cmdline"
