@@ -117,6 +117,17 @@ The initramfs hands over to the program named by `init=` on the kernel command l
 
 This relies on the minimal-initramfs + `switch_root` boot model (`runit/1-initramfs`: a tiny busybox-only initramfs that mounts the real root and switches into it) being in place, since that's what makes the initramfs a small, cleanly-swappable artifact separate from the running system.
 
+## Build notes
+
+The Makefile carries no comments; the reasons for its less obvious steps are here.
+
+- **`ssp.stamp`.** Kira's gcc always asks the linker for `libssp_nonshared`, which the `musl-gcc` wrapper cannot find (it only searches the sysroot). The stamp adds an empty stub to the link path, outside the sysroot. Every component built with the wrapper depends on it.
+- **eudev and libkmod.** libtool would link the host's `/usr/lib/libkmod.so` (built against OpenSSL 3) through kmod's `.la` file, so the eudev step removes that file first and eudev links the sysroot's own libkmod. eudev's own modules are only autoloaded because of this (see the comment in `runit/1`).
+- **polkit's PAM file.** Without `/etc/pam.d/polkit-1`, PAM falls back to `/etc/pam.d/other`, which Kira does not have, and every polkit authentication failed (pkexec, the desktop's password dialogs).
+- **File ownership.** Files made by plain `cp` and `printf` in the sysroot step belong to whoever ran make, and `--numeric-owner` would bake that uid into the image, where it becomes whichever user has the same uid on the booting machine. Everything is normalized to root at the end, and `/etc/shadow` keeps the image's own `shadow` group, by number (a bare `shadow` would resolve against the build host's group file, and `unix_chkpwd` could not read `/etc/shadow` on the installed system).
+- **The initramfs modules.** The storage controllers (AHCI, virtio-blk) and the CD-ROM layer are modules, and the initramfs has no udev, so it loads them itself; without them the live boot cannot see a SATA or virtio disk, only what is built into the kernel (NVMe).
+- **`/sbin/init`.** It points at runit's `runit-init`. BusyBox's `init` applet would otherwise be what the kernel, and tools that wrap init such as kokuin's `kokuin-init`, start by default. `runit/1` repairs the link on systems installed before this.
+
 ## License
 
 GPL-2.0

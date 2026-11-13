@@ -10,6 +10,8 @@ mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /run
 # Remount root read-write (initramfs mounted it ro)
 mount -o remount,rw /
+# the kernel and kokuin-init start /sbin/init: it has to be runit, not BusyBox's init applet
+ln -sf runit-init /sbin/init
 mkdir -p /run/udev
 if [ -d /sys/firmware/efi ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars

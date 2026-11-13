@@ -213,9 +213,6 @@ build/stamps/kmod.stamp: build/sources/kmod-$(KMOD_V)/ build/stamps/ssp.stamp | 
 
 	touch $@
 
-# eudev's own modules never actually get autoloaded without this - see runit/1's
-# comment for the fallout when it's missing (an explicit modprobe list to work
-# around every device that used to silently never get a driver)
 build/stamps/eudev.stamp: build/sources/eudev-$(EUDEV_V)/ build/stamps/ssp.stamp build/stamps/kmod.stamp | build/stamps/
 	rm -f $(SYSROOT)/usr/lib/libkmod.la
 	cd $(<D) && \
@@ -372,6 +369,7 @@ build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp bu
 
 	install -m 755 runit/1 runit/2 runit/3 $(SYSROOT)/etc/runit
 	cp -a services/* $(SYSROOT)/etc/sv
+	ln -sf runit-init $(SYSROOT)/sbin/init
 	rm -f $(SYSROOT)/etc/sv/*/down
 	cp -r config/etc/* $(SYSROOT)/etc/
 	cp -r config/lib/* $(SYSROOT)/lib/
@@ -408,8 +406,6 @@ build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp bu
 	mkdir -p $(SYSROOT)/etc/pam.d
 	printf 'auth required pam_unix.so\naccount required pam_unix.so\nsession required pam_unix.so\nsession optional pam_elogind.so\n' > $(SYSROOT)/etc/pam.d/login
 	sudo chmod 644 $(SYSROOT)/etc/pam.d/login
-	# polkit's admin prompts: without their own file PAM falls back to /etc/pam.d/other, which Kira doesn't
-	# have, and every polkit authentication (pkexec, the desktop's password dialogs) failed
 	printf 'auth include login\naccount include login\nsession include login\n' > $(SYSROOT)/etc/pam.d/polkit-1
 	sudo chmod 644 $(SYSROOT)/etc/pam.d/polkit-1
 	sudo chmod 640 $(SYSROOT)/etc/shadow
@@ -428,18 +424,7 @@ build/stamps/sysroot.stamp: build/stamps/ssp.stamp build/stamps/busybox.stamp bu
 		printf 'service /etc/sv/%s\n' "$$svc" >> $(SYSROOT)/etc/kira-update-manifest; \
 	done
 
-	# every plain (non-sudo) cp/printf above created its file owned by whoever
-	# ran make, not root - harmless on this build machine, but --numeric-owner
-	# below bakes that raw uid straight into the image, where it gets
-	# reinterpreted as whatever real user happens to own that same uid on
-	# the machine that boots it (uid 1000 became "kira" on the live ISO and
-	# a fresh install's own first user - /etc/passwd and /etc/pam.d/login
-	# included). Normalize everything to root now that every file is in
-	# place, then restore the one deliberate exception.
 	sudo chown -R root:root $(SYSROOT)
-	# by number from the image's own /etc/group: a bare "shadow" resolves against
-	# the build host's group file (gid 42 there, 148 in Kira), and unix_chkpwd
-	# then can't read /etc/shadow on the installed system
 	sudo chgrp $$(awk -F: '$$1 == "shadow" { print $$3 }' $(SYSROOT)/etc/group) $(SYSROOT)/etc/shadow
 
 	touch $@
@@ -474,9 +459,6 @@ build/initramfs.cpio.gz: build/stamps/sysroot.stamp runit/1-initramfs build/micr
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/umount
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/switch_root
 	ln -sf ../bin/busybox $(INITRAMFS_ROOT)/sbin/modprobe
-	# storage controllers (ahci, virtio-blk) and the CD-ROM translation layer are built as
-	# modules, and this minimal init has no udev/kmod autoload - without these, the live-boot
-	# device scan below can never see a SATA/AHCI or virtio disk, only whatever's built in (NVMe)
 	mkdir -p $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)
 	cp $(SYSROOT)/lib/modules/$(KERNEL_VERSION)/modules.dep $(INITRAMFS_ROOT)/lib/modules/$(KERNEL_VERSION)/
 	for mod in kernel/drivers/ata/libahci.ko kernel/drivers/ata/ahci.ko \
