@@ -22,6 +22,12 @@ swapon -a 2>/dev/null || true
 # /var/run must be a symlink to /run: some packages hardcode one path, others the other, and without the symlink they silently can't talk to each other
 rm -rf /var/run
 ln -sf /run /var/run
+# X sockets: /tmp/.X11-unix must be root's and sticky-world-writable. The greeter's Xwayland (user greetd) used to create it as
+# greetd 0755, after which no user's Xwayland could make its socket: no X11 app (OnlyOffice's Flatpak) ever started
+rm -f /tmp/.X*-lock /tmp/.X11-unix/X*
+mkdir -p /tmp/.X11-unix
+chown root:root /tmp/.X11-unix
+chmod 1777 /tmp/.X11-unix
 # libfuse3 (fusermount3) reads/writes /etc/mtab to track its own mounts - with
 # no mtab at all it can still mount but never registers the mount, so anything
 # checking mount state after the fact (xdg-document-portal's own re-mount
