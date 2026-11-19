@@ -1,2 +1,4 @@
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export SVDIR=/etc/sv
+# a UTF-8 locale unless one is set: in the plain C locale, apps (Flatpak ones above all) cannot take file names with accents
+export LANG="${LANG:-C.UTF-8}"
