@@ -1,21 +1,21 @@
 SYSROOT = $(CURDIR)/build/sysroot
 INITRAMFS_ROOT = $(CURDIR)/build/initramfs-root
 KERNEL_VERSION = $(shell [ -f ../shinigami/include/config/kernel.release ] && cat ../shinigami/include/config/kernel.release || echo "unknown")
-KIRA_BASE_VERSION = 26.11-7
+KIRA_BASE_VERSION = 26.11-8
 SOURCE_DIR = build/sources
 MUSL_V = 1.2.6
 BUSYBOX_V = 1.38.0
 RUNIT_V = 2.3.1
-EUDEV_V = 3.2.14
-KMOD_V = 34.2
+EUDEV_V = 3.3.0
+KMOD_V = 34.4
 DHCPCD_V = 10.5.2
-ZLIB_V = 1.3.2
-LIBRESSL_V = 4.3.2
-CURL_V = 8.21.0
-ZSTD_V = 1.5.7
+ZLIB_V = 1.4
+LIBRESSL_V = 4.4.1
+CURL_V = 8.23.0
+ZSTD_V = 1.6.0
 MINISIGN_V = 0.12
 LIBSODIUM_V = 1.0.22
-CA_CERTIFICATES_V = 2026-05-14
+CA_CERTIFICATES_V = 2026-11-05
 SHINIGAMI = $(CURDIR)/../shinigami
 JOBS ?= 4
 
@@ -426,6 +426,13 @@ build/stamps/sysroot.stamp: build/stamps/wrapper.stamp build/stamps/busybox.stam
 	printf 'live /lib/libc.so\nlive /bin/busybox\nlive /usr/bin/curl\nlive /etc/ssl/certs/ca-certificates.crt\nlive /etc/profile\nlive /etc/zshenv\nlive /usr/sbin/dhcpcd\nlive /sbin/reboot\nlive /sbin/poweroff\nlive /sbin/halt\nrestart:eudev /usr/sbin/udevd\nboot /sbin/runit\nboot /sbin/runit-init\nboot /sbin/sv\nboot /sbin/chpst\nboot /sbin/runsv\nboot /sbin/runsvdir\nboot /sbin/svlogd\nboot /etc/runit/1\nboot /etc/runit/2\nboot /etc/runit/3\n' > $(SYSROOT)/etc/kira-update-manifest
 	for svc in $(notdir $(wildcard services/*)); do \
 		printf 'service /etc/sv/%s\n' "$$svc" >> $(SYSROOT)/etc/kira-update-manifest; \
+	done
+	for pkg in "musl $(MUSL_V)" "busybox $(BUSYBOX_V)" "xz $(BUSYBOX_V)" "tar $(BUSYBOX_V)" "runit $(RUNIT_V)" "eudev $(EUDEV_V)" "kmod-libs $(KMOD_V)" "dhcpcd $(DHCPCD_V)" "curl $(CURL_V)" "zstd $(ZSTD_V)" "minisign $(MINISIGN_V)"; do \
+		set -- $$pkg; \
+		printf 'register %s %s\n' "$$1" "$$2" >> $(SYSROOT)/etc/kira-update-manifest; \
+		mkdir -p $(SYSROOT)/var/lib/flux/installed/$$1; \
+		printf 'name = %s\nversion = %s\ninstall_date = %s\nauto_installed = 0\nsource = base\n' "$$1" "$$2" "$$(date '+%Y-%m-%d %H:%M:%S')" > $(SYSROOT)/var/lib/flux/installed/$$1/info; \
+		touch $(SYSROOT)/var/lib/flux/installed/$$1/files $(SYSROOT)/var/lib/flux/installed/$$1/checksums; \
 	done
 
 	sudo chown -R root:root $(SYSROOT)
